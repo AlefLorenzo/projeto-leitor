@@ -8,6 +8,7 @@ import ExplorePage from './pages/ExplorePage';
 import DownloadsPage from './pages/DownloadsPage';
 import StatisticsPage from './pages/StatisticsPage';
 import SettingsPage from './pages/SettingsPage';
+import { NotificationBell } from './components/NotificationBell';
 
 type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings';
 
@@ -90,6 +91,17 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
+        {/* Top Bar */}
+        <div className="sticky top-0 z-30 bg-graphite-950/80 backdrop-blur-sm border-b border-graphite-700/30 px-4 lg:px-8 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="lg:hidden">
+              <span className="text-sm font-semibold text-graphite-100">Manga Offline</span>
+            </div>
+            <div className="hidden lg:block"></div>
+            <NotificationBell />
+          </div>
+        </div>
+
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">
           {view === 'home' && (
             <HomePage onOpenManga={handleOpenManga} onReadChapter={handleReadChapter} onImport={() => setView('import')} />

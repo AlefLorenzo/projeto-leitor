@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { ImportOptions, ChapterImport, MangaType, ReadingDirection } from '../types';
 import { importManga, importFromArchive, detectChaptersFromFiles, getDefaultReadingDirection, formatFileSize } from '../services/import';
+import { useToast } from '../components/Toast';
 
 interface ImportPageProps {
   onComplete: (mangaId: string) => void;
@@ -10,6 +11,7 @@ interface ImportPageProps {
 type ImportStep = 'type' | 'files' | 'info' | 'chapters' | 'review' | 'processing' | 'done';
 
 export default function ImportPage({ onComplete, onCancel }: ImportPageProps) {
+  const { addToast } = useToast();
   const [step, setStep] = useState<ImportStep>('type');
   const [importType, setImportType] = useState<'single' | 'multi'>('single');
   const [files, setFiles] = useState<File[]>([]);
@@ -150,9 +152,11 @@ export default function ImportPage({ onComplete, onCancel }: ImportPageProps) {
 
     if (res.success || res.mangaId) {
       setStep('done');
+      addToast(`Obra importada com sucesso! ${res.chaptersCreated} capítulo(s), ${res.pagesCreated} página(s)`, 'success');
     } else {
       setErrors(res.errors);
       setStep('chapters');
+      addToast('Erro ao importar obra', 'error');
     }
   };
 
