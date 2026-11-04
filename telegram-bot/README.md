@@ -1,128 +1,234 @@
-# 🤖 Bot do Telegram - Manga Offline
+# 📱 Cliente Telegram MTProto - Manga Offline
 
-## 📱 O Que É Isso?
+## ⚠️ LEIA PRIMEIRO: SEGURANÇA
 
-Um bot do Telegram que permite enviar obras (CBZ, ZIP, imagens) diretamente do seu celular para o app Manga Offline. O bot organiza automaticamente os arquivos, atualiza o catálogo e faz push para o Git.
+**Se você expôs suas credenciais (api_id, api_hash) publicamente:**
 
-## 🚀 Como Funciona
+🚨 **VEJA:** [SECURITY_ALERT.md](./SECURITY_ALERT.md)
 
-```
-Você (Telegram) → Bot → Organiza → Catálogo → Git → App
-```
+**Ações imediatas:**
+1. Revogue todas as sessões ativas no Telegram
+2. Delete o app em https://my.telegram.org
+3. Crie um novo app com novas credenciais
+4. Use APENAS variáveis de ambiente (NUNCA no código)
 
-1. Você envia um arquivo CBZ/ZIP/imagem para o bot
-2. O bot pergunta o nome da obra
-3. O bot salva o arquivo e atualiza o catálogo
-4. O bot faz commit e push para o Git
-5. O app atualiza automaticamente
+---
+
+## 🎯 O Que É Isso?
+
+Um cliente Telegram MTProto que permite:
+- ✅ Acessar seus canais e grupos
+- ✅ Baixar arquivos de mangás (CBZ, ZIP, imagens)
+- ✅ Organizar automaticamente
+- ✅ Atualizar o catálogo do app
+- ✅ Enviar para o Git
+
+**Diferença do Bot:**
+- **Bot API**: Recebe arquivos que você envia para o bot
+- **MTProto Client**: Acessa diretamente seus canais/grupos e baixa de lá
+
+---
 
 ## 📋 Pré-requisitos
 
 - ✅ Node.js 18+
-- ✅ Conta no Telegram
+- ✅ Conta Telegram ativa
+- ✅ Credenciais API do Telegram (api_id, api_hash)
 - ✅ Git configurado
-- ✅ Repositório do Manga Offline
 
-## 🔧 Instalação (5 minutos)
+---
 
-### Passo 1: Criar o Bot no Telegram
+## 🔑 Obter Credenciais
 
-1. Abra o Telegram e procure por **@BotFather**
-2. Envie o comando: `/newbot`
-3. Escolha um nome para o bot (ex: "Manga Offline Bot")
-4. Escolha um username (ex: `manga_offline_bot`)
-5. **Copie o token** que o BotFather fornecer
+### Passo 1: Criar App no Telegram
 
-### Passo 2: Configurar o Bot
+1. Acesse: https://my.telegram.org
+2. Faça login com seu número
+3. Clique em **API development tools**
+4. Se for primeira vez:
+   - Preencha os dados do app
+   - **App title**: Manga Offline
+   - **Short name**: manga_offline
+   - **URL**: (deixe em branco)
+   - **Platform**: Desktop
+   - **Description**: App pessoal de leitura
+5. Clique em **Create application**
+6. **Copie o api_id e api_hash**
+
+### Passo 2: Configurar .env
 
 ```bash
-# Navegue até a pasta do bot
 cd telegram-bot
-
-# Copie o arquivo de configuração
 cp .env.example .env
-
-# Edite o arquivo .env
-nano .env  # ou use seu editor preferido
+nano .env  # ou use seu editor
 ```
 
-Cole o token no arquivo `.env`:
+Cole suas credenciais:
 ```env
-TELEGRAM_BOT_TOKEN=seu_token_aqui
+TELEGRAM_API_ID=seu_api_id_aqui
+TELEGRAM_API_HASH=seu_api_hash_aqui
+TELEGRAM_SESSION=  # Será gerado após primeiro login
+GIT_REPO=..
 ```
 
-### Passo 3: Instalar Dependências
+**⚠️ IMPORTANTE:**
+- NUNCA comite o arquivo `.env`
+- NUNCA compartilhe suas credenciais
+- Mantenha em local seguro
+
+---
+
+## 🚀 Instalação
 
 ```bash
+# Instalar dependências
 npm install
-```
 
-### Passo 4: Iniciar o Bot
-
-```bash
+# Iniciar cliente
 npm start
 ```
 
-Pronto! O bot está rodando! 🎉
+### Primeiro Login
+
+Na primeira execução, o cliente vai pedir:
+
+1. **Número de telefone** (com código do país)
+   ```
+   📱 Digite seu número (com código do país, ex: +5511999999999):
+   ```
+   Digite: `+5511999999999` (seu número)
+
+2. **Código de verificação** (enviado pelo Telegram)
+   ```
+   📲 Digite o código recebido no Telegram:
+   ```
+   Abra o Telegram e copie o código
+
+3. **Senha 2FA** (se tiver ativado)
+   ```
+   🔐 Digite sua senha (se tiver 2FA):
+   ```
+   Digite sua senha ou pressione Enter se não tiver
+
+4. **Session string** (IMPORTANTE!)
+   ```
+   💾 Session string (guarde com segurança):
+   abc123def456...
+   ```
+   **Copie esta string** e adicione ao `.env`:
+   ```env
+   TELEGRAM_SESSION=abc123def456...
+   ```
+
+**Próxima vez que executar, não precisará fazer login novamente!**
+
+---
 
 ## 📖 Como Usar
 
-### Enviar uma Obra
-
-1. Abra o chat com seu bot no Telegram
-2. Envie o comando `/start`
-3. Envie um arquivo:
-   - **CBZ** (Comic Book ZIP)
-   - **ZIP** com imagens
-   - **Imagem** (será usada como capa)
-4. O bot vai perguntar o nome da obra
-5. Responda com o título
-6. Pronto! A obra será adicionada ao catálogo
-
-### Comandos Disponíveis
-
-- `/start` - Iniciar o bot
-- `/list` - Listar todas as obras
-- `/status` - Ver status do bot
-- `/help` - Ajuda
-
-### Exemplo de Uso
+### Menu Principal
 
 ```
-Você: [envia arquivo "solo-leveling-001.cbz"]
-Bot: ✅ Arquivo recebido: solo-leveling-001.cbz
-     📝 Agora, qual o nome da obra?
-
-Você: Solo Leveling
-Bot: 📝 Obra: Solo Leveling
-     ⏳ Processando...
-     ✅ Arquivo baixado!
-     ✅ Obra "Solo Leveling" adicionada com sucesso!
-     📚 O catálogo foi atualizado e enviado para o Git.
+📋 MENU PRINCIPAL
+1. Listar meus chats (canais/grupos)
+2. Baixar de um chat específico
+3. Ver catálogo atual
+4. Sair
 ```
+
+### Opção 1: Listar Chats
+
+Mostra todos seus canais e grupos:
+```
+📱 Seus chats:
+1. 📢 Canal: Manga Channel (ID: 123456789)
+2. 👥 Grupo: Manga Group (ID: 987654321)
+3. 💬 Chat: Amigos (ID: 111222333)
+```
+
+### Opção 2: Baixar de um Chat
+
+1. Escolha a opção 2
+2. Digite o ID ou username do chat:
+   ```
+   📥 Digite o ID ou username do chat (ex: @canal ou 123456789):
+   ```
+   Exemplos:
+   - `@mangachannel` (username)
+   - `123456789` (ID numérico)
+
+3. O cliente busca arquivos de mangá:
+   ```
+   🔍 Buscando mensagens em: @mangachannel
+   ✅ Chat encontrado: Manga Channel
+   
+   📬 150 mensagens encontradas
+   🔎 Procurando arquivos de mangá...
+   
+   📄 one-piece-001.cbz (15/01/2024)
+   📄 one-piece-002.cbz (22/01/2024)
+   📄 one-piece-003.cbz (29/01/2024)
+   
+   ✅ 3 arquivos encontrados
+   ```
+
+4. Digite o nome da obra:
+   ```
+   📝 Nome da obra: One Piece
+   ```
+
+5. Aguarde o download:
+   ```
+   ⬇️  Baixando 3 arquivos...
+   [1/3] one-piece-001.cbz
+   [2/3] one-piece-002.cbz
+   [3/3] one-piece-003.cbz
+   
+   ✅ Download concluído!
+   ✅ Catálogo atualizado
+   ✅ Enviado para o Git!
+   ```
+
+### Opção 3: Ver Catálogo
+
+Mostra todas as obras já baixadas:
+```
+📚 Catálogo atual:
+1. One Piece (3 capítulos)
+2. Solo Leveling (5 capítulos)
+3. Tower of God (2 capítulos)
+
+📊 Total: 3 obras
+```
+
+---
 
 ## 📁 Estrutura de Arquivos
 
 ```
 telegram-bot/
-├── bot.js              # Código principal do bot
-├── package.json        # Dependências
-├── .env                # Configurações (NÃO comitar!)
-├── .env.example        # Template de configuração
-└── downloads/          # Arquivos baixados (gerado automaticamente)
-    └── nome-da-obra/
-        ├── arquivo.cbz
-        ├── cover.jpg
+├── client.js              # Cliente MTProto
+├── package.json           # Dependências
+├── .env                   # Credenciais (NÃO comitar!)
+├── .env.example           # Template
+├── SECURITY_ALERT.md      # Alerta de segurança
+├── README.md              # Este arquivo
+└── downloads/             # Arquivos baixados
+    └── one-piece/
+        ├── one-piece-001.cbz
+        ├── one-piece-002.cbz
         └── metadata.json
 
 public/
 └── catalog/
-    └── catalog.json    # Catálogo atualizado pelo bot
+    └── catalog.json       # Catálogo atualizado
 ```
+
+---
 
 ## 🔄 Integração com o App
 
-O bot atualiza automaticamente o arquivo `public/catalog/catalog.json`. O app lê esse arquivo e exibe as obras na página "Telegram".
+O cliente atualiza automaticamente `public/catalog/catalog.json`. O app lê esse arquivo na página "Telegram".
 
 ### Estrutura do Catálogo
 
@@ -130,76 +236,148 @@ O bot atualiza automaticamente o arquivo `public/catalog/catalog.json`. O app l�
 {
   "mangas": [
     {
-      "id": "solo-leveling",
-      "title": "Solo Leveling",
-      "type": "manhwa",
-      "genres": ["ação", "fantasia"],
+      "id": "one-piece",
+      "title": "One Piece",
+      "type": "manga",
+      "genres": [],
       "status": "reading",
-      "coverUrl": "/catalog/solo-leveling/cover.jpg",
+      "coverUrl": "/catalog/one-piece/cover.jpg",
       "chapters": [
         {
           "id": "chapter-1",
           "title": "Capítulo 1",
-          "pageCount": 45,
-          "files": ["solo-leveling-001.cbz"]
+          "pageCount": 3,
+          "files": []
         }
       ],
       "addedAt": "2024-01-15T10:30:00.000Z",
-      "source": "telegram"
+      "source": "telegram-client"
     }
   ],
   "lastUpdated": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-## 🌐 Rodando 24/7
+---
 
-### Opção 1: VPS (Recomendado)
+## 🔐 Segurança
 
-Use um VPS barato (DigitalOcean, Hetzner, etc):
+### Protegendo Suas Credenciais
+
+1. **NUNCA comite o .env**
+   ```bash
+   # Verificar se está no .gitignore
+   cat .gitignore | grep .env
+   ```
+
+2. **Usar variáveis de ambiente**
+   ```bash
+   # Linux/Mac
+   export TELEGRAM_API_ID=seu_id
+   export TELEGRAM_API_HASH=seu_hash
+   ```
+
+3. **Proteger a session string**
+   - A session string dá acesso completo à sua conta
+   - Trate como uma senha
+   - Não compartilhe com ninguém
+
+### Verificar Sessões Ativas
+
+1. Telegram → Configurações → Privacidade e Segurança
+2. Role até **Sessões Ativas**
+3. Verifique se há dispositivos desconhecidos
+4. Encerre sessões suspeitas
+
+---
+
+## 🐛 Problemas Comuns
+
+### "TELEGRAM_API_ID e TELEGRAM_API_HASH não configurados"
+**Solução:** Crie o arquivo `.env` com suas credenciais
+
+### "PHONE_CODE_INVALID"
+**Solução:** O código expirou. Solicite um novo e digite rapidamente
+
+### "SESSION_EXPIRED"
+**Solução:** Delete `TELEGRAM_SESSION` do `.env` e faça login novamente
+
+### "Cannot find module 'telegram'"
+**Solução:** Execute `npm install`
+
+### "Access denied"
+**Solução:** Você não tem acesso ao chat. Verifique se está inscrito no canal/grupo
+
+---
+
+## 📊 Comandos Úteis
+
+### Listar todos os chats
+```bash
+npm start
+# Escolha opção 1
+```
+
+### Baixar de um canal específico
+```bash
+npm start
+# Escolha opção 2
+# Digite: @nome_do_canal
+```
+
+### Ver catálogo
+```bash
+npm start
+# Escolha opção 3
+```
+
+### Resetar sessão
+```bash
+# Edite .env e remova TELEGRAM_SESSION
+nano .env
+# Execute novamente
+npm start
+```
+
+---
+
+## 🌐 Rodando em Servidor
+
+### Usando PM2
 
 ```bash
-# No VPS
-git clone seu-repositorio
-cd manga-offline/telegram-bot
-npm install
-
-# Usar PM2 para manter o bot rodando
+# Instalar PM2
 npm install -g pm2
-pm2 start bot.js --name manga-bot
-pm2 save
-pm2 startup
+
+# Iniciar cliente
+pm2 start client.js --name manga-client
+
+# Ver logs
+pm2 logs manga-client
+
+# Parar
+pm2 stop manga-client
 ```
 
-### Opção 2: Raspberry Pi
+### Usando Systemd (Linux)
 
-Perfeito para rodar em casa:
+Crie `/etc/systemd/system/manga-client.service`:
 
-```bash
-# No Raspberry Pi
-sudo apt update
-sudo apt install nodejs npm git
-git clone seu-repositorio
-cd manga-offline/telegram-bot
-npm install
-
-# Usar systemd para iniciar automaticamente
-sudo nano /etc/systemd/system/manga-bot.service
-```
-
-Conteúdo do arquivo:
 ```ini
 [Unit]
-Description=Manga Offline Telegram Bot
+Description=Manga Offline Telegram Client
 After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/manga-offline/telegram-bot
-ExecStart=/usr/bin/node bot.js
+User=seu_usuario
+WorkingDirectory=/caminho/para/manga-offline/telegram-bot
+ExecStart=/usr/bin/node client.js
 Restart=always
 RestartSec=10
+Environment=TELEGRAM_API_ID=seu_id
+Environment=TELEGRAM_API_HASH=seu_hash
+Environment=TELEGRAM_SESSION=sua_session
 
 [Install]
 WantedBy=multi-user.target
@@ -207,97 +385,64 @@ WantedBy=multi-user.target
 
 Ativar:
 ```bash
-sudo systemctl enable manga-bot
-sudo systemctl start manga-bot
+sudo systemctl enable manga-client
+sudo systemctl start manga-client
 ```
-
-### Opção 3: Seu Computador (Testes)
-
-```bash
-# Manter rodando em background
-npm start &
-
-# Ou usar nohup
-nohup npm start &
-```
-
-## 🔐 Segurança
-
-### Restringir Acesso
-
-Para permitir apenas seu acesso, adicione seu Chat ID no `.env`:
-
-```env
-TELEGRAM_CHAT_ID=seu_chat_id_aqui
-```
-
-**Como obter seu Chat ID:**
-1. Procure por **@userinfobot** no Telegram
-2. Envie `/start`
-3. Copie o ID numérico
-
-### Proteger o Token
-
-- ✅ NUNCA comite o arquivo `.env`
-- ✅ Use variáveis de ambiente em produção
-- ✅ Regenere o token se vazar
-
-## 🐛 Problemas Comuns
-
-### "TELEGRAM_BOT_TOKEN não configurado"
-**Solução:** Crie o arquivo `.env` com o token
-
-### "Cannot find module"
-**Solução:** Execute `npm install`
-
-### Bot não responde
-**Solução:** Verifique se o bot está rodando (`npm start`)
-
-### Arquivo não baixa
-**Solução:** Verifique se o arquivo é menor que 50MB (limite do Telegram)
-
-### Catálogo não atualiza
-**Solução:** Verifique permissões da pasta `public/catalog/`
-
-## 📊 Estatísticas
-
-O bot mantém estatísticas em `public/catalog/catalog.json`:
-
-- Total de obras
-- Total de capítulos
-- Total de páginas
-- Data da última atualização
-
-## 🔄 Atualizações
-
-Para atualizar o bot:
-
-```bash
-git pull
-cd telegram-bot
-npm install
-# Reinicie o bot
-pm2 restart manga-bot  # se usar PM2
-```
-
-## 📞 Suporte
-
-Problemas com o bot?
-1. Verifique os logs: `pm2 logs manga-bot`
-2. Teste o token: `curl https://api.telegram.org/botSEU_TOKEN/getMe`
-3. Verifique a conexão com a internet
-
-## 🎯 Próximos Passos
-
-Depois que o bot estiver funcionando:
-
-1. ✅ Teste enviando uma obra
-2. ✅ Verifique se aparece no app
-3. ✅ Configure para rodar 24/7
-4. ✅ Compartilhe com amigos (se quiser)
 
 ---
 
-**Status:** ✅ Pronto para usar!
+## 📚 Diferença: Bot vs Client
 
-**Próximo:** Inicie o bot com `npm start` e envie sua primeira obra! 🚀
+| Recurso | Bot API | MTProto Client |
+|---------|---------|----------------|
+| Recebe arquivos enviados | ✅ | ❌ |
+| Acessa canais/grupos | ❌ | ✅ |
+| Baixa de canais | ❌ | ✅ |
+| Precisa de token | ✅ | ❌ |
+| Precisa de api_id/hash | ❌ | ✅ |
+| Login com número | ❌ | ✅ |
+| Acesso completo à conta | ❌ | ✅ |
+| Mais seguro | ✅ | ⚠️ |
+
+**Use Bot API para:**
+- Receber arquivos que você envia
+- Interação simples
+
+**Use MTProto Client para:**
+- Baixar de canais/grupos
+- Acesso direto ao Telegram
+- Automação completa
+
+---
+
+## 🎯 Próximos Passos
+
+1. ✅ Obter credenciais em https://my.telegram.org
+2. ✅ Configurar `.env` com credenciais
+3. ✅ Executar `npm install`
+4. ✅ Executar `npm start`
+5. ✅ Fazer login (primeira vez)
+6. ✅ Salvar session string no `.env`
+7. ✅ Listar chats (opção 1)
+8. ✅ Baixar de um canal (opção 2)
+9. ✅ Verificar no app (página "Telegram")
+
+---
+
+## 📞 Suporte
+
+### Problemas com o Cliente?
+1. Verifique os logs
+2. Teste as credenciais em https://my.telegram.org
+3. Consulte: [SECURITY_ALERT.md](./SECURITY_ALERT.md)
+
+### Problemas de Segurança?
+1. **URGENTE:** Veja [SECURITY_ALERT.md](./SECURITY_ALERT.md)
+2. Revogue sessões imediatamente
+3. Crie novas credenciais
+
+---
+
+**Status:** ✅ Pronto para usar
+
+**⚠️ Lembre-se:** Proteja suas credenciais como uma senha!
