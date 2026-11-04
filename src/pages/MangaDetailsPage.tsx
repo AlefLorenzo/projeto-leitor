@@ -38,6 +38,20 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
     if (mangaId) loadExtra();
   }, [mangaId, chapters]);
 
+  // Force reload when component becomes visible (user returns from reader)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && mangaId) {
+        // Reload chapter statuses when page becomes visible
+        getChaptersWithStatus(mangaId).then(setChaptersWithStatus);
+        getContinueReadingInfo(mangaId).then(setContinueInfo);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [mangaId]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -140,8 +154,11 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
     return ch.readStatus === chapterFilter;
   });
 
+  // Calculate chapter counts
+  const totalCount = chaptersWithStatus.length;
   const completedCount = chaptersWithStatus.filter(ch => ch.readStatus === 'completed').length;
   const inProgressCount = chaptersWithStatus.filter(ch => ch.readStatus === 'in_progress').length;
+  const unreadCount = chaptersWithStatus.filter(ch => ch.readStatus === 'not_started').length;
 
   return (
     <div className="slide-up">
@@ -190,18 +207,22 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-5 gap-3 mb-4">
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-graphite-100">{chapters.length}</p>
-                <p className="text-[10px] text-graphite-500">Capítulos</p>
+                <p className="text-lg font-bold text-graphite-100">{totalCount}</p>
+                <p className="text-[10px] text-graphite-500">Total</p>
               </div>
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-success">{completedCount}</p>
-                <p className="text-[10px] text-graphite-500">Concluídos</p>
+                <p className="text-lg font-bold text-graphite-400">{unreadCount}</p>
+                <p className="text-[10px] text-graphite-500">Não lidos</p>
               </div>
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-violet-light">{inProgressCount}</p>
                 <p className="text-[10px] text-graphite-500">Em andamento</p>
+              </div>
+              <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-success">{completedCount}</p>
+                <p className="text-[10px] text-graphite-500">Concluídos</p>
               </div>
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-graphite-100">{formatFileSize(manga.storageSize)}</p>
