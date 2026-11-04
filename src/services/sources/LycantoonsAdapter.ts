@@ -110,6 +110,7 @@ export class LycantoonsAdapter implements OnlineSourceAdapter {
       total: mangas.length * 10,
       hasMore: mangas.length >= 12,
       page,
+      limit: 12,
     };
   }
 

@@ -1,7 +1,6 @@
 import {
   SourceManga,
   SourceChapter,
-  SourcePage,
   ChapterDownloadState,
 } from './types';
 import { Manga, Chapter, Page } from '../../types';
@@ -20,7 +19,7 @@ export interface ChapterDownloadProgress {
   chapterId: string;
   mangaId: string;
   chapterNumber: number;
-  stage: 'fetching_pages' | 'downloading_images' | 'validating' | 'saving' | 'completed' | 'failed';
+  stage: 'fetching_pages' | 'downloading_images' | 'validating' | 'saving' | 'completed' | 'failed' | 'cancelled';
   currentImage: number;
   totalImages: number;
   percent: number;
@@ -28,10 +27,23 @@ export interface ChapterDownloadProgress {
   error?: string;
 }
 
+export interface BatchDownloadProgress {
+  mangaId: string;
+  completedChapters: number;
+  totalChapters: number;
+  overallPercent: number;
+  activeChapterId?: string;
+  activeChapterNumber?: number;
+  totalBytesDownloaded: number;
+  isCompleted: boolean;
+  failedCount: number;
+}
+
 const activeDownloads = new Map<string, AbortController>();
+let isBatchCancelled = false;
 
 /**
- * Converte Blob para base64 dataUrl para máxima resiliência offline em WebViews
+ * Converte Blob para base64 dataUrl para máxima resiliência offline em WebViews e navegadores
  */
 async function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -66,7 +78,7 @@ export async function getChapterDownloadState(chapterId: string): Promise<Chapte
 }
 
 /**
- * Cancela um download ativo
+ * Cancela um download ativo individual
  */
 export function cancelOnlineDownload(chapterId: string): boolean {
   const controller = activeDownloads.get(chapterId);
@@ -79,13 +91,36 @@ export function cancelOnlineDownload(chapterId: string): boolean {
 }
 
 /**
+ * Cancela todos os downloads ativos e qualquer lote em andamento
+ */
+export function cancelAllOnlineDownloads(): void {
+  isBatchCancelled = true;
+  for (const [id, controller] of activeDownloads.entries()) {
+    controller.abort();
+    activeDownloads.delete(id);
+  }
+}
+
+/**
+ * Estima o tamanho de um lote de capítulos em bytes
+ */
+export function estimateBatchSize(chapters: SourceChapter[]): number {
+  return chapters.reduce((sum, ch) => {
+    const pages = ch.pageCountEstimate || 25;
+    // Estimativa média de ~350KB por página WebP/JPEG
+    return sum + pages * 350 * 1024;
+  }, 0);
+}
+
+/**
  * Baixa um capítulo de fonte online, valida todas as páginas em área temporária,
  * e finaliza a gravação local de forma ATÔMICA sem deixar capítulos incompletos.
  */
 export async function downloadOnlineChapter(
   manga: SourceManga,
   chapter: SourceChapter,
-  onProgress?: (p: ChapterDownloadProgress) => void
+  onProgress?: (p: ChapterDownloadProgress) => void,
+  preferDataSaver = false
 ): Promise<boolean> {
   const chapterId = chapter.id;
   const mangaId = manga.id;
@@ -150,29 +185,30 @@ export async function downloadOnlineChapter(
       }
 
       const page = pages[i];
+      const targetUrl = preferDataSaver && page.dataSaverUrl ? page.dataSaverUrl : page.imageUrl;
       let res: Response | null = null;
       let attempts = 0;
 
       // Retry controlado em caso de instabilidade na CDN
       while (attempts < 3) {
         try {
-          res = await fetch(page.imageUrl, { signal: abortController.signal });
+          res = await fetch(targetUrl, { signal: abortController.signal });
           if (res.ok) break;
         } catch (e: any) {
           if (abortController.signal.aborted) throw new Error('Download cancelado pelo usuário.');
         }
         attempts++;
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 800));
       }
 
       if (!res || !res.ok) {
-        throw new Error(`Falha ao baixar página ${page.pageNumber} após 3 tentativas.`);
+        throw new Error(`Falha ao baixar página ${page.pageNumber} após retentativas.`);
       }
 
       const blob = await res.blob();
       const size = blob.size;
 
-      // Validação de arquivo corrompido / vazio (< 1KB)
+      // Validação estrita de integridade (< 1KB é inválido/corrompido)
       if (size < 1024) {
         throw new Error(`Página ${page.pageNumber} corrompida ou vazia (${size} bytes).`);
       }
@@ -214,7 +250,7 @@ export async function downloadOnlineChapter(
       localManga = {
         id: mangaId,
         title: manga.title,
-        synopsis: manga.synopsis || `Obra importada da fonte ${adapter.name}.`,
+        synopsis: manga.synopsis || `Obra do catálogo ${adapter.name}.`,
         coverUrl: manga.coverUrl || manga.thumbnailUrl,
         genres: manga.genres && manga.genres.length ? manga.genres : ['Ação'],
         type: manga.type || 'manga',
@@ -271,11 +307,12 @@ export async function downloadOnlineChapter(
     activeDownloads.delete(chapterId);
     return true;
   } catch (err: any) {
-    const errorMsg = err?.message || 'Falha desconhecida no download.';
-    report('failed', 0, 0, 0, 0, errorMsg);
+    const isCancelled = abortController.signal.aborted;
+    const errorMsg = isCancelled ? 'Download cancelado.' : err?.message || 'Falha no download.';
+    report(isCancelled ? 'cancelled' : 'failed', 0, 0, 0, 0, errorMsg);
     activeDownloads.delete(chapterId);
 
-    // Limpeza de capítulo corrompido ou incompleto para manter atomicidade
+    // Limpeza de capítulo corrompido ou incompleto para manter atomicidade estrita
     try {
       await deleteChapter(chapterId);
     } catch {}
@@ -285,8 +322,75 @@ export async function downloadOnlineChapter(
 }
 
 /**
+ * Baixa múltiplos capítulos em sequência ordenada com relatório de progresso do lote
+ */
+export async function downloadOnlineBatch(
+  manga: SourceManga,
+  chapters: SourceChapter[],
+  onBatchProgress?: (p: BatchDownloadProgress) => void,
+  onChapterProgress?: (p: ChapterDownloadProgress) => void
+): Promise<{ completed: number; failed: number }> {
+  isBatchCancelled = false;
+  let completed = 0;
+  let failed = 0;
+  let totalBytes = 0;
+
+  const total = chapters.length;
+
+  for (let i = 0; i < chapters.length; i++) {
+    if (isBatchCancelled) break;
+
+    const chapter = chapters[i];
+
+    if (onBatchProgress) {
+      onBatchProgress({
+        mangaId: manga.id,
+        completedChapters: completed,
+        totalChapters: total,
+        overallPercent: Math.round((i / total) * 100),
+        activeChapterId: chapter.id,
+        activeChapterNumber: chapter.number,
+        totalBytesDownloaded: totalBytes,
+        isCompleted: false,
+        failedCount: failed,
+      });
+    }
+
+    const success = await downloadOnlineChapter(
+      manga,
+      chapter,
+      (prog) => {
+        if (onChapterProgress) onChapterProgress(prog);
+      }
+    );
+
+    if (success) {
+      completed++;
+    } else {
+      failed++;
+    }
+
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  if (onBatchProgress) {
+    onBatchProgress({
+      mangaId: manga.id,
+      completedChapters: completed,
+      totalChapters: total,
+      overallPercent: 100,
+      totalBytesDownloaded: totalBytes,
+      isCompleted: true,
+      failedCount: failed,
+    });
+  }
+
+  return { completed, failed };
+}
+
+/**
  * Exclui o download local de um capítulo, liberando espaço físico no IndexedDB
- * PRESERVANDO o histórico, favoritos e progresso de leitura!
+ * PRESERVANDO rigorosamente o histórico, favoritos e progresso de leitura!
  */
 export async function deleteChapterDownloadOnly(chapterId: string): Promise<boolean> {
   try {
