@@ -9,15 +9,17 @@ import ExplorePage from './pages/ExplorePage';
 import DownloadsPage from './pages/DownloadsPage';
 import StatisticsPage from './pages/StatisticsPage';
 import SettingsPage from './pages/SettingsPage';
+import FileManagerPage from './pages/FileManagerPage';
 import { NotificationBell } from './components/NotificationBell';
-import { getAllMangas } from './services/database';
+import { getAllMangas, getManga } from './services/database';
 
-type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings';
+type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings' | 'files';
 
 function App() {
   const [view, setView] = useState<View>('home');
   const [selectedMangaId, setSelectedMangaId] = useState<string | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+  const [selectedMangaTitle, setSelectedMangaTitle] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('home');
   const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
 
@@ -35,9 +37,18 @@ function App() {
     checkFirstTime();
   }, []);
 
-  const handleOpenManga = (id: string) => {
+  const handleOpenManga = async (id: string) => {
     setSelectedMangaId(id);
+    const manga = await getManga(id);
+    if (manga) setSelectedMangaTitle(manga.title);
     setView('details');
+  };
+
+  const handleManageFiles = async (id: string) => {
+    setSelectedMangaId(id);
+    const manga = await getManga(id);
+    if (manga) setSelectedMangaTitle(manga.title);
+    setView('files');
   };
 
   const handleReadChapter = (mangaId: string, chapterId: string) => {
@@ -148,7 +159,20 @@ function App() {
             <ImportPage onComplete={handleImportComplete} onCancel={handleBackToLibrary} />
           )}
           {view === 'details' && selectedMangaId && (
-            <MangaDetailsPage mangaId={selectedMangaId} onBack={handleBackToLibrary} onRead={(chapterId) => handleReadChapter(selectedMangaId, chapterId)} onRefresh={() => {}} />
+            <MangaDetailsPage 
+              mangaId={selectedMangaId} 
+              onBack={handleBackToLibrary} 
+              onRead={(chapterId) => handleReadChapter(selectedMangaId, chapterId)} 
+              onRefresh={() => {}} 
+              onManageFiles={handleManageFiles}
+            />
+          )}
+          {view === 'files' && selectedMangaId && (
+            <FileManagerPage 
+              mangaId={selectedMangaId}
+              mangaTitle={selectedMangaTitle}
+              onBack={() => setView('details')}
+            />
           )}
           {view === 'explore' && (
             <ExplorePage onOpenCatalogManga={() => {}} onAddToLibrary={() => {}} />

@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import { Manga, Chapter, Page, ReadingProgress } from '../types';
 
 const DB_NAME = 'manga-offline-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbInstance: IDBPDatabase | null = null;
 
@@ -68,6 +68,13 @@ export async function getDB(): Promise<IDBPDatabase> {
       // Providers store
       if (!db.objectStoreNames.contains('providers')) {
         db.createObjectStore('providers', { keyPath: 'id' });
+      }
+
+      // Reading history store
+      if (!db.objectStoreNames.contains('history')) {
+        const historyStore = db.createObjectStore('history', { keyPath: 'id' });
+        historyStore.createIndex('mangaId', 'mangaId');
+        historyStore.createIndex('accessedAt', 'accessedAt');
       }
     },
   });

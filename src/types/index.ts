@@ -31,7 +31,22 @@ export interface Manga {
   catalogProvider?: string;
   externalUrl?: string;
   autoDownload?: boolean;
+  // Per-manga settings
+  customSettings?: MangaSettings;
 }
+
+export interface MangaSettings {
+  readingDirection?: ReadingDirection;
+  zoomLevel?: number;
+  brightness?: number;
+  showPageNumber?: boolean;
+  immersiveMode?: boolean;
+  autoNextChapter?: boolean;
+  pageSpacing?: number;
+  doublePage?: boolean;
+}
+
+export type ChapterReadStatus = 'not_started' | 'in_progress' | 'completed';
 
 export interface Chapter {
   id: string;
@@ -45,6 +60,8 @@ export interface Chapter {
   externalUrl?: string;
   isDownloaded: boolean;
   scanlator?: string;
+  // Reading status
+  readStatus?: ChapterReadStatus;
 }
 
 export interface Page {
@@ -65,6 +82,11 @@ export interface ReadingProgress {
   totalPages: number;
   lastReadAt: number;
   completed: boolean;
+  // Enhanced progress tracking
+  scrollPosition?: number; // For vertical mode
+  percentComplete?: number; // 0-100
+  pageId?: string; // Stable page identifier
+  readingTime?: number; // Seconds spent reading
 }
 
 export interface ImportOptions {
@@ -196,4 +218,41 @@ export interface AppNotification {
   createdAt: number;
   read: boolean;
   actionUrl?: string;
+}
+
+// Reading history
+export interface ReadingHistoryEntry {
+  id: string;
+  mangaId: string;
+  chapterId: string;
+  pageNumber: number;
+  accessedAt: number;
+  duration?: number; // seconds
+}
+
+// File management
+export interface MangaFileInfo {
+  mangaId: string;
+  totalSize: number;
+  chaptersCount: number;
+  pagesCount: number;
+  storageLocation: string;
+  lastModified: number;
+  chapters: ChapterFileInfo[];
+}
+
+export interface ChapterFileInfo {
+  chapterId: string;
+  chapterNumber: number;
+  chapterTitle: string;
+  pagesCount: number;
+  size: number;
+  pages: PageFileInfo[];
+}
+
+export interface PageFileInfo {
+  pageId: string;
+  pageNumber: number;
+  size: number;
+  format: string;
 }
