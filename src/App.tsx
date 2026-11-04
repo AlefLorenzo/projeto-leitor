@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import WelcomePage from './pages/WelcomePage';
 import HomePage from './pages/HomePage';
 import LibraryPage from './pages/LibraryPage';
 import ImportPage from './pages/ImportPage';
@@ -9,6 +10,7 @@ import DownloadsPage from './pages/DownloadsPage';
 import StatisticsPage from './pages/StatisticsPage';
 import SettingsPage from './pages/SettingsPage';
 import { NotificationBell } from './components/NotificationBell';
+import { getAllMangas } from './services/database';
 
 type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings';
 
@@ -17,6 +19,21 @@ function App() {
   const [selectedMangaId, setSelectedMangaId] = useState<string | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('home');
+  const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
+
+  // Check if first time
+  useEffect(() => {
+    const checkFirstTime = async () => {
+      try {
+        const mangas = await getAllMangas();
+        setShowWelcome(mangas.length === 0);
+      } catch (error) {
+        console.error('Error checking first time:', error);
+        setShowWelcome(false);
+      }
+    };
+    checkFirstTime();
+  }, []);
 
   const handleOpenManga = (id: string) => {
     setSelectedMangaId(id);
@@ -38,6 +55,24 @@ function App() {
     setView('library');
     setActiveTab('library');
   };
+
+  const handleWelcomeComplete = () => {
+    setShowWelcome(false);
+  };
+
+  // Show welcome page on first time
+  if (showWelcome === true) {
+    return <WelcomePage onComplete={handleWelcomeComplete} />;
+  }
+
+  // Show loading while checking
+  if (showWelcome === null) {
+    return (
+      <div className="min-h-screen bg-graphite-950 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-violet-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   // Reader is fullscreen
   if (view === 'reader' && selectedMangaId && selectedChapterId) {
@@ -82,9 +117,9 @@ function App() {
           <div className="glass-card rounded-lg p-2">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success pulse-glow"></div>
-              <span className="text-[10px] text-graphite-400">Fase 7 — Polimento</span>
+              <span className="text-[10px] text-graphite-400">Fase 7 — Completa</span>
             </div>
-            <p className="text-[10px] text-graphite-500 mt-1">App funcional ✓</p>
+            <p className="text-[10px] text-graphite-500 mt-1">Demo ativa ✓</p>
           </div>
         </div>
       </aside>

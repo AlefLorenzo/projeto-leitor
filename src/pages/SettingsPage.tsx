@@ -3,12 +3,16 @@ import { AppSettings } from '../types';
 import { getSettings, saveSettings } from '../services/settings';
 import { getStorageStats, getAllMangas, deleteManga } from '../services/database';
 import { formatFileSize } from '../services/import';
+import { clearAllData, seedDemoData } from '../services/seed';
+import { useToast } from '../components/Toast';
 
 export default function SettingsPage() {
+  const { addToast } = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [storageInfo, setStorageInfo] = useState<{ total: number; byManga: { id: string; title: string; size: number }[] }>({ total: 0, byManga: [] });
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [reloading, setReloading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -44,7 +48,24 @@ export default function SettingsPage() {
     for (const manga of mangas) {
       await deleteManga(manga.id);
     }
+    addToast('Todos os dados foram removidos', 'success');
     window.location.reload();
+  };
+
+  const handleReloadDemo = async () => {
+    if (!confirm('Isso irá limpar todos os dados e carregar a demonstração novamente. Continuar?')) return;
+    
+    setReloading(true);
+    try {
+      await clearAllData();
+      await seedDemoData();
+      addToast('Demonstração recarregada com sucesso!', 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error('Error reloading demo:', error);
+      addToast('Erro ao recarregar demonstração', 'error');
+      setReloading(false);
+    }
   };
 
   if (loading || !settings) {
@@ -109,12 +130,21 @@ export default function SettingsPage() {
           />
         </div>
 
-        <button
-          onClick={handleClearAll}
-          className="w-full py-2 text-xs text-error border border-error/20 rounded-lg hover:bg-error/10"
-        >
-          🗑️ Limpar todos os dados
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleReloadDemo}
+            disabled={reloading}
+            className="flex-1 py-2 text-xs text-violet-light border border-violet-accent/20 rounded-lg hover:bg-violet-accent/10 disabled:opacity-50"
+          >
+            {reloading ? 'Recarregando...' : '🎮 Recarregar Demo'}
+          </button>
+          <button
+            onClick={handleClearAll}
+            className="flex-1 py-2 text-xs text-error border border-error/20 rounded-lg hover:bg-error/10"
+          >
+            🗑️ Limpar tudo
+          </button>
+        </div>
       </section>
 
       {/* Reader Settings */}

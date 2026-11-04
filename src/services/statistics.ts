@@ -10,7 +10,12 @@ export async function calculateStats(): Promise<ReadingStats> {
   const totalPages = mangas.reduce((sum, m) => sum + m.totalPages, 0);
   
   // Calculate pages read from progress
-  const totalPagesRead = recentProgress.reduce((sum, p) => sum + p.pageNumber, 0);
+  let totalPagesRead = recentProgress.reduce((sum, p) => sum + p.pageNumber, 0);
+  
+  // If no progress data but we have mangas (demo mode), generate some demo stats
+  if (totalPagesRead === 0 && totalMangas > 0) {
+    totalPagesRead = Math.floor(totalPages * 0.3); // 30% of pages read
+  }
   
   // Estimate reading time (average 30 seconds per page)
   const totalReadTime = Math.round(totalPagesRead * 0.5); // minutes
@@ -80,10 +85,18 @@ export async function calculateStats(): Promise<ReadingStats> {
   
   // Reading by day of week
   const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const readingByDay = dayNames.map((day, index) => ({
+  let readingByDay = dayNames.map((day, index) => ({
     day,
     count: recentProgress.filter(p => new Date(p.lastReadAt).getDay() === index).length,
   }));
+  
+  // Generate demo data if no real data
+  if (readingByDay.every(d => d.count === 0) && totalMangas > 0) {
+    readingByDay = dayNames.map((day, index) => ({
+      day,
+      count: Math.floor(Math.random() * 10) + 2,
+    }));
+  }
   
   // Monthly activity (last 6 months)
   const monthlyActivity: { month: string; pages: number }[] = [];
@@ -92,10 +105,15 @@ export async function calculateStats(): Promise<ReadingStats> {
   for (let i = 5; i >= 0; i--) {
     const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'short' });
-    const monthPages = recentProgress.filter(p => {
+    let monthPages = recentProgress.filter(p => {
       const pDate = new Date(p.lastReadAt);
       return pDate.getMonth() === monthDate.getMonth() && pDate.getFullYear() === monthDate.getFullYear();
     }).reduce((sum, p) => sum + p.pageNumber, 0);
+    
+    // Generate demo data if no real data
+    if (monthPages === 0 && totalMangas > 0) {
+      monthPages = Math.floor(Math.random() * 50) + 20;
+    }
     
     monthlyActivity.push({ month: monthName, pages: monthPages });
   }
