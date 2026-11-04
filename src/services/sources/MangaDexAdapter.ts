@@ -47,6 +47,23 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
   readonly description = 'Catálogo oficial global com milhares de obras traduzidas em Português';
   readonly isAuthorized = true;
 
+  /**
+   * No browser usamos o proxy Vite (/api/mangadex → https://api.mangadex.org)
+   * para evitar erros de CORS/403. Em Node.js (testes) a URL direta é usada.
+   */
+  private get apiBase(): string {
+    if (typeof window !== 'undefined') return '/api/mangadex';
+    return this.baseUrl;
+  }
+
+  /**
+   * URL base das capas: proxy no browser, URL direta nos testes.
+   */
+  private get coverBase(): string {
+    if (typeof window !== 'undefined') return '/api/mdcovers';
+    return 'https://uploads.mangadex.org/covers';
+  }
+
   private coverBaseUrl = 'https://uploads.mangadex.org/covers';
   private cachePrefix = 'manga_offline_md_cache_';
   private lastRequestTime = 0;
@@ -103,7 +120,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 6000);
 
-      const res = await this.safeFetch(`${this.baseUrl}/ping`, controller.signal);
+      const res = await this.safeFetch(`${this.apiBase}/ping`, controller.signal);
       clearTimeout(timeout);
 
       if (res.ok) {
@@ -201,7 +218,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
     }
 
     const cacheKey = `list_${JSON.stringify({ ...options, page: currentPage, limit })}`;
-    const url = `${this.baseUrl}/manga?${params.toString()}`;
+    const url = `${this.apiBase}/manga?${params.toString()}`;
 
     try {
       const res = await this.safeFetch(url, currentSignal);
@@ -239,10 +256,10 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
         const coverRel = item.relationships?.find((r: any) => r.type === 'cover_art');
         const coverFileName = coverRel?.attributes?.fileName;
         const coverUrl = coverFileName
-          ? `${this.coverBaseUrl}/${item.id}/${coverFileName}.512.jpg`
+          ? `${this.coverBase}/${item.id}/${coverFileName}.512.jpg`
           : undefined;
         const thumbnailUrl = coverFileName
-          ? `${this.coverBaseUrl}/${item.id}/${coverFileName}.256.jpg`
+          ? `${this.coverBase}/${item.id}/${coverFileName}.256.jpg`
           : undefined;
 
         // Autor e Artista
@@ -324,7 +341,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
     const mangaId = sourceMangaId.replace(/^mangadex:/, '');
     const cacheKey = `manga_details_${mangaId}`;
 
-    const url = `${this.baseUrl}/manga/${mangaId}?includes[]=cover_art&includes[]=author&includes[]=artist`;
+    const url = `${this.apiBase}/manga/${mangaId}?includes[]=cover_art&includes[]=author&includes[]=artist`;
 
     try {
       const res = await this.safeFetch(url);
@@ -357,10 +374,10 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
       const coverRel = item.relationships?.find((r: any) => r.type === 'cover_art');
       const coverFileName = coverRel?.attributes?.fileName;
       const coverUrl = coverFileName
-        ? `${this.coverBaseUrl}/${item.id}/${coverFileName}.512.jpg`
+        ? `${this.coverBase}/${item.id}/${coverFileName}.512.jpg`
         : undefined;
       const thumbnailUrl = coverFileName
-        ? `${this.coverBaseUrl}/${item.id}/${coverFileName}.256.jpg`
+        ? `${this.coverBase}/${item.id}/${coverFileName}.256.jpg`
         : undefined;
 
       const authorRel = item.relationships?.find((r: any) => r.type === 'author');
@@ -444,7 +461,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
           }
         }
 
-        const res = await this.safeFetch(`${this.baseUrl}/manga/${mangaId}/feed?${params.toString()}`);
+        const res = await this.safeFetch(`${this.apiBase}/manga/${mangaId}/feed?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status} ao carregar capítulos`);
         const data = await res.json();
 
@@ -513,7 +530,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
    */
   async getChapterPages(sourceMangaId: string, chapterId: string): Promise<SourcePage[]> {
     const cleanChapterId = chapterId.replace(/^mangadex:/, '');
-    const url = `${this.baseUrl}/at-home/server/${cleanChapterId}`;
+    const url = `${this.apiBase}/at-home/server/${cleanChapterId}`;
 
     const res = await this.safeFetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status} ao obter servidor de imagens MangaDex`);
@@ -528,12 +545,26 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
       throw new Error('Nenhuma página retornada para este capítulo no MangaDex.');
     }
 
+    /**
+     * No browser, substituímos o host externo pelo proxy local /api/mdhome
+     * para contornar bloqueios de CORS e 403 nos CDNs do MangaDex.
+     * Em Node.js (testes), usamos a URL direta.
+     */
+    const resolveImageUrl = (imgHost: string, path: string): string => {
+      if (typeof window !== 'undefined') {
+        // Remove o protocolo+domínio e usa o proxy local
+        const urlPath = path.startsWith('/') ? path : '/' + path;
+        return `/api/mdhome${urlPath}`;
+      }
+      return `${imgHost}${path}`;
+    };
+
     return files.map((fileName, index) => {
       const saverFileName = filesSaver[index] || fileName;
       return {
         pageNumber: index + 1,
-        imageUrl: `${host}/data/${hash}/${fileName}`,
-        dataSaverUrl: `${host}/data-saver/${hash}/${saverFileName}`,
+        imageUrl: resolveImageUrl(host, `/data/${hash}/${fileName}`),
+        dataSaverUrl: resolveImageUrl(host, `/data-saver/${hash}/${saverFileName}`),
       };
     });
   }
