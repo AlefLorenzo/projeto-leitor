@@ -14,15 +14,14 @@ import {
   getDB,
 } from '../database';
 import { onlineSourceManager } from './OnlineSourceManager';
+import { isCapacitorNative } from '../platform';
 
 /**
  * Detecta se está rodando como APK nativo (Capacitor).
  * No APK o fetch() de imagens CDN falha por CORS — usamos CapacitorHttp.
  */
 function isNativeApp(): boolean {
-  return typeof window !== 'undefined' &&
-    (window.location.protocol === 'capacitor:' ||
-     (window as any).Capacitor?.isNativePlatform?.() === true);
+  return isCapacitorNative();
 }
 
 /**

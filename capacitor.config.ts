@@ -6,20 +6,13 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   bundledWebRuntime: false,
   server: {
-    // http permite que o WebView acesse APIs externas com menos restrições
     androidScheme: 'https',
-    allowNavigation: [
-      'api.mangadex.org',
-      'uploads.mangadex.org',
-      '*.mangadex.network',
-      'mangadex.org',
-    ],
+    allowNavigation: ['*'],
   },
   android: {
-    // allowMixedContent necessário para imagens HTTP em contexto HTTPS
     allowMixedContent: true,
     captureInput: true,
-    webContentsDebuggingEnabled: false,
+    webContentsDebuggingEnabled: true,
     backgroundColor: '#0a0a0f',
   },
   plugins: {
@@ -39,7 +32,6 @@ const config: CapacitorConfig = {
       resize: 'body',
       resizeOnFullScreen: true,
     },
-    // CapacitorHttp: faz requisições pelo layer nativo Android, sem CORS
     CapacitorHttp: {
       enabled: true,
     },

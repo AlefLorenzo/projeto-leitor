@@ -1,3 +1,4 @@
+import { universalFetch } from './platform';
 import { Manga, Chapter, Page } from '../types';
 import { getDB, saveManga, saveChapter, savePages, getManga, getAllMangas } from './database';
 
@@ -93,9 +94,18 @@ export async function loadTelegramCatalog(): Promise<TelegramCatalog> {
   }
   
   try {
-    const response = await fetch('/catalog/catalog.json?t=' + now);
-    if (!response.ok) {
-      throw new Error('Catálogo não encontrado');
+    let response: Response | null = null;
+    try {
+      response = await fetch('/catalog/catalog.json?t=' + now);
+    } catch {}
+
+    if (!response || !response.ok) {
+      const githubUrl = 'https://raw.githubusercontent.com/AlefLorenzo/projeto-leitor/main/public/catalog/catalog.json?t=' + now;
+      response = await universalFetch(githubUrl);
+    }
+
+    if (!response || !response.ok) {
+      throw new Error('Catálogo não encontrado local nem remotamente no GitHub');
     }
     
     const catalog: TelegramCatalog = await response.json();

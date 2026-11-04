@@ -8,6 +8,8 @@ dist/
 # Android build
 android/.gradle/
 android/app/build/
+library/
+public/library/
 android/captures/
 android/local.properties
 android/keystore.properties
@@ -59,3 +61,5 @@ coverage/
 *.temp
 .next/
 build/
+library/
+public/library/

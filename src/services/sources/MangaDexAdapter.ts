@@ -7,6 +7,7 @@ import {
   SourceAvailability,
   SourceFilterOptions,
 } from './types';
+import { isCapacitorNative, universalFetch } from '../platform';
 
 /**
  * Ordenação natural e inteligente de capítulos
@@ -49,15 +50,9 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
 
   /**
    * Detecta se o app está rodando como APK nativo (Capacitor).
-   * No APK: usa URLs diretas (a API do MangaDex tem CORS, e o MainActivity
-   * faz proxy nativo para imagens CDN via shouldInterceptRequest).
-   * No browser dev: usa o proxy Vite (/api/mangadex) para contornar CORS.
-   * Em Node.js (testes): usa URLs diretas.
    */
   private get isNativeApp(): boolean {
-    return typeof window !== 'undefined' &&
-      (window.location.protocol === 'capacitor:' ||
-       (window as any).Capacitor?.isNativePlatform?.() === true);
+    return isCapacitorNative();
   }
 
   private get apiBase(): string {
@@ -93,7 +88,8 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
   }
 
   /**
-   * Fetch seguro com retry exponencial em caso de 429 (Too Many Requests)
+   * Fetch seguro com retry exponencial em caso de 429 (Too Many Requests).
+   * No APK, universalFetch executa via CapacitorHttp (nativo Java, sem restrições de CORS).
    */
   private async safeFetch(url: string, signal?: AbortSignal, maxRetries = 2): Promise<Response> {
     await this.throttle();
@@ -101,7 +97,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
 
     while (attempt <= maxRetries) {
       try {
-        const res = await fetch(url, { signal });
+        const res = await universalFetch(url, { signal });
         if (res.status === 429) {
           attempt++;
           const waitTime = Math.pow(2, attempt) * 1000;

@@ -155,7 +155,7 @@ export default function TelegramPage({ onOpenManga, onOpenReader }: TelegramPage
     <div className="slide-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-graphite-100 mb-1">📱 Obras do Telegram</h1>
+          <h1 className="text-2xl font-bold text-graphite-100 mb-1">🌐 Catálogo Git Online</h1>
           <p className="text-sm text-graphite-400">
             {mangas.length} obras extraídas • Clique em qualquer uma para ler na sua Biblioteca
           </p>

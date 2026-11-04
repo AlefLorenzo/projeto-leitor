@@ -91,8 +91,25 @@ function mangaDexImageProxyPlugin() {
   };
 }
 
+function cleanupDistPlugin() {
+  return {
+    name: "cleanup-dist-plugin",
+    closeBundle() {
+      import("node:fs").then(({ existsSync, rmSync }) => {
+        import("node:path").then(({ resolve }) => {
+          const distLib = resolve(__dirname, "dist/library");
+          if (existsSync(distLib)) {
+            rmSync(distLib, { recursive: true, force: true });
+            console.log("[build] dist/library removido para manter o APK leve!");
+          }
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), mangaDexImageProxyPlugin()],
+  plugins: [react(), tailwindcss(), mangaDexImageProxyPlugin(), cleanupDistPlugin()],
   server: {
     host: "0.0.0.0",
     port: 5173,

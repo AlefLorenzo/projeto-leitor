@@ -22,20 +22,18 @@ function App() {
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [selectedMangaTitle, setSelectedMangaTitle] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('home');
-  const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
+  const [showWelcome, setShowWelcome] = useState<boolean>(false);
 
-  // Check if first time
+  // Check inicial - entra direto no app
   useEffect(() => {
-    const checkFirstTime = async () => {
+    const checkInitialState = async () => {
       try {
-        const mangas = await getAllMangas();
-        setShowWelcome(mangas.length === 0);
+        await getAllMangas();
       } catch (error) {
-        console.error('Error checking first time:', error);
-        setShowWelcome(false);
+        console.error('Error initializing database:', error);
       }
     };
-    checkFirstTime();
+    checkInitialState();
   }, []);
 
   const handleOpenManga = async (id: string) => {
@@ -72,18 +70,14 @@ function App() {
     setShowWelcome(false);
   };
 
-  // Show welcome page on first time
-  if (showWelcome === true) {
-    return <WelcomePage onComplete={handleWelcomeComplete} />;
-  }
+  const navigateTo = (newView: View, tabName?: string) => {
+    setView(newView);
+    setActiveTab(tabName || newView);
+  };
 
-  // Show loading while checking
-  if (showWelcome === null) {
-    return (
-      <div className="min-h-screen bg-graphite-950 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-violet-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+  // Show welcome page apenas se requisitado explicitamente
+  if (showWelcome) {
+    return <WelcomePage onComplete={handleWelcomeComplete} />;
   }
 
   // Reader is fullscreen
@@ -99,9 +93,9 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-graphite-950">
-      {/* Sidebar */}
-      <aside className="w-16 lg:w-56 bg-graphite-900 border-r border-graphite-700/50 flex flex-col flex-shrink-0">
+    <div className="flex h-screen overflow-hidden bg-graphite-950 flex-col md:flex-row">
+      {/* Sidebar para Tablets e Desktops */}
+      <aside className="hidden md:flex w-16 lg:w-56 bg-graphite-900 border-r border-graphite-700/50 flex-col flex-shrink-0">
         {/* Logo */}
         <div className="h-14 flex items-center px-4 border-b border-graphite-700/50">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-accent to-violet-dark flex items-center justify-center flex-shrink-0">
@@ -112,17 +106,17 @@ function App() {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 overflow-y-auto">
-          <NavItem icon="🏠" label="Início" active={activeTab === 'home' && view !== 'import' && view !== 'details'} onClick={() => { setActiveTab('home'); setView('home'); }} />
-          <NavItem icon="📚" label="Biblioteca" active={activeTab === 'library' && view !== 'import' && view !== 'details'} onClick={() => { setActiveTab('library'); setView('library'); }} />
-          <NavItem icon="📱" label="Telegram" active={activeTab === 'telegram'} onClick={() => { setActiveTab('telegram'); setView('telegram'); }} />
-          <NavItem icon="🔍" label="Explorar" active={activeTab === 'explore'} onClick={() => { setActiveTab('explore'); setView('explore'); }} />
-          <NavItem icon="📥" label="Downloads" active={activeTab === 'downloads'} onClick={() => { setActiveTab('downloads'); setView('downloads'); }} />
+          <NavItem icon="🏠" label="Início" active={activeTab === 'home' && view !== 'import' && view !== 'details'} onClick={() => navigateTo('home')} />
+          <NavItem icon="🌐" label="Catálogo Git" active={activeTab === 'telegram'} onClick={() => navigateTo('telegram')} />
+          <NavItem icon="📙" label="MangaDex" active={activeTab === 'explore'} onClick={() => navigateTo('explore')} />
+          <NavItem icon="📚" label="Biblioteca" active={activeTab === 'library' && view !== 'import' && view !== 'details'} onClick={() => navigateTo('library')} />
+          <NavItem icon="📥" label="Downloads" active={activeTab === 'downloads'} onClick={() => navigateTo('downloads')} />
           
           <div className="my-3 border-t border-graphite-700/30"></div>
           
-          <NavItem icon="📂" label="Importar" active={view === 'import'} onClick={() => setView('import')} />
-          <NavItem icon="📊" label="Estatísticas" active={activeTab === 'statistics'} onClick={() => { setActiveTab('statistics'); setView('statistics'); }} />
-          <NavItem icon="⚙️" label="Configurações" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setView('settings'); }} />
+          <NavItem icon="📂" label="Importar" active={view === 'import'} onClick={() => navigateTo('import')} />
+          <NavItem icon="📊" label="Estatísticas" active={activeTab === 'statistics'} onClick={() => navigateTo('statistics')} />
+          <NavItem icon="⚙️" label="Configurações" active={activeTab === 'settings'} onClick={() => navigateTo('settings')} />
         </nav>
 
         {/* Footer */}
@@ -130,32 +124,43 @@ function App() {
           <div className="glass-card rounded-lg p-2">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success pulse-glow"></div>
-              <span className="text-[10px] text-graphite-400">Fase 7 — Completa</span>
+              <span className="text-[10px] text-graphite-400">APK Online + Git</span>
             </div>
-            <p className="text-[10px] text-graphite-500 mt-1">Demo ativa ✓</p>
+            <p className="text-[10px] text-graphite-500 mt-1">Sincronizado ✓</p>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
         {/* Top Bar */}
         <div className="sticky top-0 z-30 bg-graphite-950/80 backdrop-blur-sm border-b border-graphite-700/30 px-4 lg:px-8 py-3">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="lg:hidden">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-accent to-violet-dark flex items-center justify-center md:hidden">
+                <span className="text-white text-xs font-bold">M</span>
+              </div>
               <span className="text-sm font-semibold text-graphite-100">Manga Offline</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-violet-accent/20 text-violet-light font-mono font-medium">v1.0 Nativo</span>
             </div>
-            <div className="hidden lg:block"></div>
-            <NotificationBell />
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+            </div>
           </div>
         </div>
 
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">
           {view === 'home' && (
-            <HomePage onOpenManga={handleOpenManga} onReadChapter={handleReadChapter} onImport={() => setView('import')} />
+            <HomePage 
+              onOpenManga={handleOpenManga} 
+              onReadChapter={handleReadChapter} 
+              onImport={() => navigateTo('import')}
+              onOpenTelegram={() => navigateTo('telegram')}
+              onOpenExplore={() => navigateTo('explore')}
+            />
           )}
           {view === 'library' && (
-            <LibraryPage onOpenManga={handleOpenManga} onImport={() => setView('import')} />
+            <LibraryPage onOpenManga={handleOpenManga} onImport={() => navigateTo('import')} />
           )}
           {view === 'import' && (
             <ImportPage onComplete={handleImportComplete} onCancel={handleBackToLibrary} />
@@ -190,6 +195,40 @@ function App() {
           {view === 'settings' && <SettingsPage />}
         </div>
       </main>
+
+      {/* Bottom Navigation Bar para Mobile (Celulares Android) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-graphite-900/95 backdrop-blur-md border-t border-graphite-700/50 flex items-center justify-around px-2 py-1.5 safe-area-bottom shadow-2xl">
+        <BottomNavItem
+          icon="🏠"
+          label="Início"
+          active={activeTab === 'home' && view !== 'import' && view !== 'details'}
+          onClick={() => navigateTo('home')}
+        />
+        <BottomNavItem
+          icon="🌐"
+          label="Catálogo Git"
+          active={activeTab === 'telegram'}
+          onClick={() => navigateTo('telegram')}
+        />
+        <BottomNavItem
+          icon="📙"
+          label="MangaDex"
+          active={activeTab === 'explore'}
+          onClick={() => navigateTo('explore')}
+        />
+        <BottomNavItem
+          icon="📚"
+          label="Biblioteca"
+          active={activeTab === 'library' && view !== 'import' && view !== 'details'}
+          onClick={() => navigateTo('library')}
+        />
+        <BottomNavItem
+          icon="📥"
+          label="Downloads"
+          active={activeTab === 'downloads'}
+          onClick={() => navigateTo('downloads')}
+        />
+      </nav>
     </div>
   );
 }
@@ -210,5 +249,21 @@ function NavItem({ icon, label, active, onClick }: { icon: string; label: string
   );
 }
 
-export default App;
+function BottomNavItem({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-all ${
+        active
+          ? 'text-violet-light font-semibold scale-105'
+          : 'text-graphite-400 hover:text-graphite-200 opacity-80'
+      }`}
+    >
+      <span className="text-xl mb-0.5">{icon}</span>
+      <span className="text-[10px] tracking-tight">{label}</span>
+      {active && <span className="w-1.5 h-1.5 rounded-full bg-violet-accent mt-0.5"></span>}
+    </button>
+  );
+}
 
+export default App;
