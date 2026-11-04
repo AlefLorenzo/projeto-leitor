@@ -161,19 +161,43 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     };
   }, [mangaId, chapterId, saveCurrentProgress, addReadingTime]);
 
-  // Auto-hide controls
-  const resetControlsTimeout = useCallback(() => {
+  // Controls visibility management
+  const showControlsFn = useCallback(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    setShowControls(true);
     if (!immersiveMode) {
-      setShowControls(true);
       controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
     }
   }, [immersiveMode]);
 
+  const hideControls = useCallback(() => {
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    setShowControls(false);
+  }, []);
+
+  const toggleControls = useCallback(() => {
+    setShowControls(prev => {
+      const newState = !prev;
+      if (newState && !immersiveMode) {
+        // If showing controls, start auto-hide timer
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+      } else {
+        // If hiding controls, clear timer
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      }
+      return newState;
+    });
+  }, [immersiveMode]);
+
+  // Show controls on page change (but don't force if user explicitly hid them)
   useEffect(() => {
-    resetControlsTimeout();
+    // Only auto-show on initial load, not on every page change
+    if (pages.length > 0 && !loading) {
+      showControlsFn();
+    }
     return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
-  }, [currentPage, resetControlsTimeout]);
+  }, [pages.length, loading]); // Remove currentPage from dependencies
 
   // Keyboard navigation
   useEffect(() => {
@@ -219,48 +243,42 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   const goToNextPage = useCallback(() => {
     if (currentPage < pages.length - 1) {
       setCurrentPage(prev => prev + 1);
-      resetControlsTimeout();
+      showControlsFn();
     } else if (!isLast) {
       // Show boundary message and offer next chapter
       setShowBoundaryMessage('last_page');
     } else {
       setShowBoundaryMessage('last_chapter');
     }
-  }, [currentPage, pages.length, isLast, resetControlsTimeout]);
+  }, [currentPage, pages.length, isLast, showControlsFn]);
 
   const goToPrevPage = useCallback(() => {
     if (currentPage > 0) {
       setCurrentPage(prev => prev - 1);
-      resetControlsTimeout();
+      showControlsFn();
     } else if (!isFirst) {
       setShowBoundaryMessage('first_page');
     } else {
       setShowBoundaryMessage('first_chapter');
     }
-  }, [currentPage, isFirst, resetControlsTimeout]);
+  }, [currentPage, isFirst, showControlsFn]);
 
-  // Toggle controls visibility
-  const toggleControls = useCallback(() => {
-    setShowControls(prev => !prev);
-    resetControlsTimeout();
-  }, [resetControlsTimeout]);
+  // toggleControls já foi definido acima
 
-  // Handle tap/click on page
-  const handlePageClick = (e: React.MouseEvent) => {
-    const now = Date.now();
-    const timeSinceLastTap = now - lastTapRef.current;
-    lastTapRef.current = now;
-
-    // Double tap detection
-    if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+  // Handle tap/click on page - unified for desktop and mobile
+  const handlePageInteraction = (clientX: number, clientY: number, isDoubleClick: boolean) => {
+    if (isDoubleClick) {
       // Double tap - toggle zoom
       setZoom(prev => prev === 1 ? 1.5 : 1);
       return;
     }
 
-    // Single tap - toggle controls
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    // Single tap - check navigation zones
+    const container = document.querySelector('[data-reader-container]');
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const x = clientX - rect.left;
     const width = rect.width;
 
     // Navigation zones (30% left, 40% center, 30% right)
@@ -273,6 +291,37 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     } else {
       toggleControls();
     }
+  };
+
+  // Desktop click handler
+  const handlePageClick = (e: React.MouseEvent) => {
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapRef.current;
+    lastTapRef.current = now;
+
+    // Double tap detection
+    const isDoubleClick = timeSinceLastTap < 300 && timeSinceLastTap > 0;
+    handlePageInteraction(e.clientX, e.clientY, isDoubleClick);
+  };
+
+  // Mobile touch handler - only handle taps, not swipes
+  const handleTouchTap = (e: React.TouchEvent) => {
+    // Only handle if it's a simple tap (no swipe)
+    if (!dragStart) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - dragStart.x);
+    const deltaY = Math.abs(touch.clientY - dragStart.y);
+    
+    // If moved more than 10px, it's a swipe, not a tap
+    if (deltaX > 10 || deltaY > 10) return;
+
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapRef.current;
+    lastTapRef.current = now;
+
+    const isDoubleClick = timeSinceLastTap < 300 && timeSinceLastTap > 0;
+    handlePageInteraction(touch.clientX, touch.clientY, isDoubleClick);
   };
 
   // Touch handlers for mobile
@@ -326,6 +375,9 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
           if (readingDirection === 'rtl') goToPrevPage();
           else goToNextPage();
         }
+      } else {
+        // It's a tap, not a swipe
+        handleTouchTap(e);
       }
     }
     setDragStart(null);
@@ -477,18 +529,24 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
 
       {/* Reader Content */}
       <div 
+        data-reader-container
         className="flex-1 flex items-center justify-center overflow-hidden cursor-pointer relative" 
         onClick={handlePageClick}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchEnd={(e) => {
+          handleTouchEnd(e);
+          // Prevent onClick from firing on mobile after touch
+          if ('ontouchstart' in window) {
+            e.preventDefault();
+          }
+        }}
       >
         {readingDirection === 'vertical' ? (
           <div 
             ref={scrollContainerRef}
             className="w-full h-full overflow-y-auto"
             onScroll={handleScroll}
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="max-w-2xl mx-auto">
               {pages.map((page, index) => (
