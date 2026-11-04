@@ -177,7 +177,7 @@ function App() {
             />
           )}
           {view === 'explore' && (
-            <ExplorePage onOpenCatalogManga={() => {}} onAddToLibrary={() => {}} />
+            <ExplorePage onOpenReader={(mangaId, chapterId) => handleReadChapter(mangaId, chapterId)} />
           )}
           {view === 'downloads' && <DownloadsPage />}
           {view === 'telegram' && (
