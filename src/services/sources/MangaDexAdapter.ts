@@ -546,17 +546,16 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
     }
 
     /**
-     * No browser, substituímos o host externo pelo proxy local /api/mdhome
-     * para contornar bloqueios de CORS e 403 nos CDNs do MangaDex.
+     * No browser, usamos o proxy dinâmico /api/mdimg?url=<URL> para contornar
+     * CORS nos CDNs variáveis do MangaDex (ex: cmdxd98sb0x3yprd.mangadex.network).
      * Em Node.js (testes), usamos a URL direta.
      */
     const resolveImageUrl = (imgHost: string, path: string): string => {
+      const fullUrl = `${imgHost}${path}`;
       if (typeof window !== 'undefined') {
-        // Remove o protocolo+domínio e usa o proxy local
-        const urlPath = path.startsWith('/') ? path : '/' + path;
-        return `/api/mdhome${urlPath}`;
+        return `/api/mdimg?url=${encodeURIComponent(fullUrl)}`;
       }
-      return `${imgHost}${path}`;
+      return fullUrl;
     };
 
     return files.map((fileName, index) => {
