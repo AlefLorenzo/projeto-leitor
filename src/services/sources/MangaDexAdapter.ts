@@ -48,20 +48,28 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
   readonly isAuthorized = true;
 
   /**
-   * No browser usamos o proxy Vite (/api/mangadex → https://api.mangadex.org)
-   * para evitar erros de CORS/403. Em Node.js (testes) a URL direta é usada.
+   * Detecta se o app está rodando como APK nativo (Capacitor).
+   * No APK: usa URLs diretas (a API do MangaDex tem CORS, e o MainActivity
+   * faz proxy nativo para imagens CDN via shouldInterceptRequest).
+   * No browser dev: usa o proxy Vite (/api/mangadex) para contornar CORS.
+   * Em Node.js (testes): usa URLs diretas.
    */
-  private get apiBase(): string {
-    if (typeof window !== 'undefined') return '/api/mangadex';
-    return this.baseUrl;
+  private get isNativeApp(): boolean {
+    return typeof window !== 'undefined' &&
+      (window.location.protocol === 'capacitor:' ||
+       (window as any).Capacitor?.isNativePlatform?.() === true);
   }
 
-  /**
-   * URL base das capas: proxy no browser, URL direta nos testes.
-   */
+  private get apiBase(): string {
+    if (typeof window === 'undefined') return this.baseUrl;   // Node.js (testes)
+    if (this.isNativeApp) return this.baseUrl;                // APK nativo
+    return '/api/mangadex';                                   // Browser dev (proxy Vite)
+  }
+
   private get coverBase(): string {
-    if (typeof window !== 'undefined') return '/api/mdcovers';
-    return 'https://uploads.mangadex.org/covers';
+    if (typeof window === 'undefined') return 'https://uploads.mangadex.org/covers';
+    if (this.isNativeApp) return 'https://uploads.mangadex.org/covers';
+    return '/api/mdcovers';
   }
 
   private coverBaseUrl = 'https://uploads.mangadex.org/covers';
@@ -546,16 +554,17 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
     }
 
     /**
-     * No browser, usamos o proxy dinâmico /api/mdimg?url=<URL> para contornar
-     * CORS nos CDNs variáveis do MangaDex (ex: cmdxd98sb0x3yprd.mangadex.network).
-     * Em Node.js (testes), usamos a URL direta.
+     * Resolução de URL de imagem por contexto:
+     * - Node.js (testes): URL direta do CDN
+     * - APK nativo (Capacitor): URL direta — o MainActivity.java intercepta
+     *   e faz proxy nativo via shouldInterceptRequest com CORS adicionado
+     * - Browser dev: /api/mdimg?url=... via proxy dinâmico do Vite
      */
     const resolveImageUrl = (imgHost: string, path: string): string => {
       const fullUrl = `${imgHost}${path}`;
-      if (typeof window !== 'undefined') {
-        return `/api/mdimg?url=${encodeURIComponent(fullUrl)}`;
-      }
-      return fullUrl;
+      if (typeof window === 'undefined') return fullUrl;   // Node.js
+      if (this.isNativeApp) return fullUrl;                // APK — interceptado pelo WebViewClient
+      return `/api/mdimg?url=${encodeURIComponent(fullUrl)}`; // Browser dev
     };
 
     return files.map((fileName, index) => {

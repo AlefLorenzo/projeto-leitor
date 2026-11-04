@@ -15,6 +15,67 @@ import {
 } from '../database';
 import { onlineSourceManager } from './OnlineSourceManager';
 
+/**
+ * Detecta se está rodando como APK nativo (Capacitor).
+ * No APK o fetch() de imagens CDN falha por CORS — usamos CapacitorHttp.
+ */
+function isNativeApp(): boolean {
+  return typeof window !== 'undefined' &&
+    (window.location.protocol === 'capacitor:' ||
+     (window as any).Capacitor?.isNativePlatform?.() === true);
+}
+
+/**
+ * Converte uma data URL base64 em Blob.
+ */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * Faz download de uma imagem de forma segura independente do contexto:
+ * - APK: usa CapacitorHttp (HTTP nativo Android, sem CORS)
+ *        CapacitorHttp com responseType='blob' retorna base64 data URL
+ * - Browser dev: usa fetch() (roteado pelo proxy Vite /api/mdimg)
+ */
+async function fetchImage(url: string, signal: AbortSignal): Promise<{ blob: Blob; size: number }> {
+  if (isNativeApp()) {
+    // CapacitorHttp faz a requisição via camada nativa — sem restrições CORS
+    const { CapacitorHttp } = await import('@capacitor/core');
+    const response = await CapacitorHttp.get({
+      url,
+      responseType: 'blob',
+      headers: {
+        'User-Agent': 'MangaOffline/1.0 (https://github.com/AlefLorenzo/projeto-leitor)',
+        'Referer': 'https://mangadex.org/',
+        'Accept': 'image/webp,image/avif,image/*,*/*',
+      },
+    });
+    if (response.status !== 200) {
+      throw new Error(`HTTP ${response.status} ao baixar imagem`);
+    }
+    // CapacitorHttp com responseType='blob' retorna base64 data URL em response.data
+    const dataUrl = response.data as string;
+    const blob = dataUrlToBlob(dataUrl);
+    return { blob, size: blob.size };
+  }
+
+  // Browser (dev): fetch normal, URL já proxificada pelo Vite (/api/mdimg?url=...)
+  if (signal.aborted) throw new Error('Download cancelado pelo usuário.');
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  return { blob, size: blob.size };
+}
+
 export interface ChapterDownloadProgress {
   chapterId: string;
   mangaId: string;
@@ -186,27 +247,29 @@ export async function downloadOnlineChapter(
 
       const page = pages[i];
       const targetUrl = preferDataSaver && page.dataSaverUrl ? page.dataSaverUrl : page.imageUrl;
-      let res: Response | null = null;
+      let blob: Blob | null = null;
+      let size = 0;
       let attempts = 0;
 
       // Retry controlado em caso de instabilidade na CDN
       while (attempts < 3) {
         try {
-          res = await fetch(targetUrl, { signal: abortController.signal });
-          if (res.ok) break;
+          if (abortController.signal.aborted) throw new Error('Download cancelado pelo usuário.');
+          const result = await fetchImage(targetUrl, abortController.signal);
+          blob = result.blob;
+          size = result.size;
+          break;
         } catch (e: any) {
           if (abortController.signal.aborted) throw new Error('Download cancelado pelo usuário.');
+          attempts++;
+          if (attempts >= 3) throw new Error(`Falha ao baixar página ${page.pageNumber} após retentativas: ${e.message}`);
+          await new Promise((r) => setTimeout(r, 800 * attempts));
         }
-        attempts++;
-        await new Promise((r) => setTimeout(r, 800));
       }
 
-      if (!res || !res.ok) {
+      if (!blob || size === 0) {
         throw new Error(`Falha ao baixar página ${page.pageNumber} após retentativas.`);
       }
-
-      const blob = await res.blob();
-      const size = blob.size;
 
       // Validação estrita de integridade (< 1KB é inválido/corrompido)
       if (size < 1024) {
