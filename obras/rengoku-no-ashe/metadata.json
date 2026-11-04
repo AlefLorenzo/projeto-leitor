@@ -1,0 +1,28 @@
+{
+  "id": "rengoku-no-ashe",
+  "title": "Rengoku no Ashe - QG BALTIGO",
+  "synopsis": "Leitura offline de Rengoku no Ashe - QG BALTIGO.",
+  "coverUrl": "obras/rengoku-no-ashe/cover.jpg",
+  "genres": [
+    "Ação",
+    "Sobrenatural"
+  ],
+  "type": "manga",
+  "status": "reading",
+  "totalChapters": 1,
+  "updatedAt": "2026-11-04T15:38:39.688Z",
+  "chapters": [
+    {
+      "id": "rengoku-no-ashe-cap-001",
+      "number": 1,
+      "title": "Capítulo 001",
+      "format": "cbz",
+      "downloadUrl": "obras/rengoku-no-ashe/capitulos/cap-001.cbz",
+      "sizeBytes": 17981851,
+      "extractedSizeBytes": 18059907,
+      "sha256": "31ccb7edfbc94140e22429d9d41ccc9c43fb7cff4f0ac2114285c7f33b264012",
+      "pageCount": 51,
+      "updatedAt": "2026-11-04T15:38:39.688Z"
+    }
+  ]
+}
