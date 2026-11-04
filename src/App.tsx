@@ -10,10 +10,11 @@ import DownloadsPage from './pages/DownloadsPage';
 import StatisticsPage from './pages/StatisticsPage';
 import SettingsPage from './pages/SettingsPage';
 import FileManagerPage from './pages/FileManagerPage';
+import TelegramPage from './pages/TelegramPage';
 import { NotificationBell } from './components/NotificationBell';
 import { getAllMangas, getManga } from './services/database';
 
-type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings' | 'files';
+type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings' | 'files' | 'telegram';
 
 function App() {
   const [view, setView] = useState<View>('home');
@@ -113,6 +114,7 @@ function App() {
         <nav className="flex-1 py-4 px-2 overflow-y-auto">
           <NavItem icon="🏠" label="Início" active={activeTab === 'home' && view !== 'import' && view !== 'details'} onClick={() => { setActiveTab('home'); setView('home'); }} />
           <NavItem icon="📚" label="Biblioteca" active={activeTab === 'library' && view !== 'import' && view !== 'details'} onClick={() => { setActiveTab('library'); setView('library'); }} />
+          <NavItem icon="📱" label="Telegram" active={activeTab === 'telegram'} onClick={() => { setActiveTab('telegram'); setView('telegram'); }} />
           <NavItem icon="🔍" label="Explorar" active={activeTab === 'explore'} onClick={() => { setActiveTab('explore'); setView('explore'); }} />
           <NavItem icon="📥" label="Downloads" active={activeTab === 'downloads'} onClick={() => { setActiveTab('downloads'); setView('downloads'); }} />
           
@@ -178,6 +180,12 @@ function App() {
             <ExplorePage onOpenCatalogManga={() => {}} onAddToLibrary={() => {}} />
           )}
           {view === 'downloads' && <DownloadsPage />}
+          {view === 'telegram' && (
+            <TelegramPage onOpenManga={(id) => {
+              // Para obras do Telegram, mostrar mensagem de importação
+              alert(`Para importar "${id}", use o botão de importação na biblioteca.`);
+            }} />
+          )}
           {view === 'statistics' && <StatisticsPage />}
           {view === 'settings' && <SettingsPage />}
         </div>

@@ -17,6 +17,11 @@ android/keystore.properties
 *.jks
 *.key
 
+# Telegram Bot (NUNCA comitar tokens e downloads)
+telegram-bot/.env
+telegram-bot/downloads/
+telegram-bot/node_modules/
+
 # IDE
 .idea/
 .vscode/
