@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import { Manga, Chapter, Page, ReadingProgress } from '../types';
 
 const DB_NAME = 'manga-offline-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase | null = null;
 
@@ -43,6 +43,31 @@ export async function getDB(): Promise<IDBPDatabase> {
         const progressStore = db.createObjectStore('progress', { keyPath: 'id' });
         progressStore.createIndex('mangaId', 'mangaId');
         progressStore.createIndex('lastReadAt', 'lastReadAt');
+      }
+
+      // Downloads store
+      if (!db.objectStoreNames.contains('downloads')) {
+        const downloadStore = db.createObjectStore('downloads', { keyPath: 'id' });
+        downloadStore.createIndex('mangaId', 'mangaId');
+        downloadStore.createIndex('status', 'status');
+        downloadStore.createIndex('createdAt', 'createdAt');
+      }
+
+      // Notifications store
+      if (!db.objectStoreNames.contains('notifications')) {
+        const notifStore = db.createObjectStore('notifications', { keyPath: 'id' });
+        notifStore.createIndex('createdAt', 'createdAt');
+        notifStore.createIndex('read', 'read');
+      }
+
+      // Settings store
+      if (!db.objectStoreNames.contains('settings')) {
+        db.createObjectStore('settings', { keyPath: 'id' });
+      }
+
+      // Providers store
+      if (!db.objectStoreNames.contains('providers')) {
+        db.createObjectStore('providers', { keyPath: 'id' });
       }
     },
   });

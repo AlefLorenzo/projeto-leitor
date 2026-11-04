@@ -4,14 +4,18 @@ import LibraryPage from './pages/LibraryPage';
 import ImportPage from './pages/ImportPage';
 import MangaDetailsPage from './pages/MangaDetailsPage';
 import ReaderPage from './pages/ReaderPage';
+import ExplorePage from './pages/ExplorePage';
+import DownloadsPage from './pages/DownloadsPage';
+import StatisticsPage from './pages/StatisticsPage';
+import SettingsPage from './pages/SettingsPage';
 
-type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'docs';
+type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings';
 
 function App() {
   const [view, setView] = useState<View>('home');
   const [selectedMangaId, setSelectedMangaId] = useState<string | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'library'>('home');
+  const [activeTab, setActiveTab] = useState<string>('home');
 
   const handleOpenManga = (id: string) => {
     setSelectedMangaId(id);
@@ -59,34 +63,17 @@ function App() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-2">
-          <NavItem
-            icon="🏠"
-            label="Início"
-            active={activeTab === 'home' && view !== 'import' && view !== 'details'}
-            onClick={() => { setActiveTab('home'); setView('home'); }}
-          />
-          <NavItem
-            icon="📚"
-            label="Biblioteca"
-            active={activeTab === 'library' && view !== 'import' && view !== 'details'}
-            onClick={() => { setActiveTab('library'); setView('library'); }}
-          />
-          <NavItem
-            icon="📂"
-            label="Importar"
-            active={view === 'import'}
-            onClick={() => setView('import')}
-          />
+        <nav className="flex-1 py-4 px-2 overflow-y-auto">
+          <NavItem icon="🏠" label="Início" active={activeTab === 'home' && view !== 'import' && view !== 'details'} onClick={() => { setActiveTab('home'); setView('home'); }} />
+          <NavItem icon="📚" label="Biblioteca" active={activeTab === 'library' && view !== 'import' && view !== 'details'} onClick={() => { setActiveTab('library'); setView('library'); }} />
+          <NavItem icon="🔍" label="Explorar" active={activeTab === 'explore'} onClick={() => { setActiveTab('explore'); setView('explore'); }} />
+          <NavItem icon="📥" label="Downloads" active={activeTab === 'downloads'} onClick={() => { setActiveTab('downloads'); setView('downloads'); }} />
           
-          <div className="my-4 border-t border-graphite-700/30"></div>
+          <div className="my-3 border-t border-graphite-700/30"></div>
           
-          <NavItem
-            icon="📊"
-            label="Documentação"
-            active={view === 'docs'}
-            onClick={() => setView('docs')}
-          />
+          <NavItem icon="📂" label="Importar" active={view === 'import'} onClick={() => setView('import')} />
+          <NavItem icon="📊" label="Estatísticas" active={activeTab === 'statistics'} onClick={() => { setActiveTab('statistics'); setView('statistics'); }} />
+          <NavItem icon="⚙️" label="Configurações" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); setView('settings'); }} />
         </nav>
 
         {/* Footer */}
@@ -94,9 +81,9 @@ function App() {
           <div className="glass-card rounded-lg p-2">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success pulse-glow"></div>
-              <span className="text-[10px] text-graphite-400">App funcional</span>
+              <span className="text-[10px] text-graphite-400">Fase 7 — Polimento</span>
             </div>
-            <p className="text-[10px] text-graphite-500 mt-1">IndexedDB ativo</p>
+            <p className="text-[10px] text-graphite-500 mt-1">App funcional ✓</p>
           </div>
         </div>
       </aside>
@@ -105,33 +92,23 @@ function App() {
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">
           {view === 'home' && (
-            <HomePage
-              onOpenManga={handleOpenManga}
-              onReadChapter={handleReadChapter}
-              onImport={() => setView('import')}
-            />
+            <HomePage onOpenManga={handleOpenManga} onReadChapter={handleReadChapter} onImport={() => setView('import')} />
           )}
           {view === 'library' && (
-            <LibraryPage
-              onOpenManga={handleOpenManga}
-              onImport={() => setView('import')}
-            />
+            <LibraryPage onOpenManga={handleOpenManga} onImport={() => setView('import')} />
           )}
           {view === 'import' && (
-            <ImportPage
-              onComplete={handleImportComplete}
-              onCancel={handleBackToLibrary}
-            />
+            <ImportPage onComplete={handleImportComplete} onCancel={handleBackToLibrary} />
           )}
           {view === 'details' && selectedMangaId && (
-            <MangaDetailsPage
-              mangaId={selectedMangaId}
-              onBack={handleBackToLibrary}
-              onRead={(chapterId) => handleReadChapter(selectedMangaId, chapterId)}
-              onRefresh={() => {}}
-            />
+            <MangaDetailsPage mangaId={selectedMangaId} onBack={handleBackToLibrary} onRead={(chapterId) => handleReadChapter(selectedMangaId, chapterId)} onRefresh={() => {}} />
           )}
-          {view === 'docs' && <DocsPage />}
+          {view === 'explore' && (
+            <ExplorePage onOpenCatalogManga={() => {}} onAddToLibrary={() => {}} />
+          )}
+          {view === 'downloads' && <DownloadsPage />}
+          {view === 'statistics' && <StatisticsPage />}
+          {view === 'settings' && <SettingsPage />}
         </div>
       </main>
     </div>
@@ -151,85 +128,6 @@ function NavItem({ icon, label, active, onClick }: { icon: string; label: string
       <span className="text-lg flex-shrink-0">{icon}</span>
       <span className="text-sm font-medium hidden lg:block">{label}</span>
     </button>
-  );
-}
-
-function DocsPage() {
-  return (
-    <div className="slide-up">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-graphite-100 mb-2">
-          Documentação do <span className="gradient-text">Projeto</span>
-        </h1>
-        <p className="text-graphite-300 text-sm">
-          Esta é uma demonstração web funcional do projeto Manga Offline. A versão Android completa está em desenvolvimento com Flutter.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-graphite-100 mb-3">🎯 Funcionalidades Implementadas</h2>
-          <ul className="space-y-2 text-sm text-graphite-300">
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Importação de imagens (JPG, PNG, WEBP)</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Organização em obras e capítulos</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Detecção automática de capítulos por pasta</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Ordenação natural de páginas</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Leitor com 3 modos (Mangá, Manhwa, Manhua)</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Persistência com IndexedDB</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Progresso de leitura salvo</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Biblioteca com filtros e pesquisa</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Favoritos e status</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Edição e exclusão de obras</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Interface Dark Premium</li>
-            <li className="flex items-center gap-2"><span className="text-success">✓</span> Navegação por teclado no leitor</li>
-          </ul>
-        </div>
-
-        <div className="glass-card rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-graphite-100 mb-3">🛠️ Tecnologias Utilizadas</h2>
-          <ul className="space-y-2 text-sm text-graphite-300">
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> React + TypeScript</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> Tailwind CSS</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> IndexedDB (via idb)</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> File API (importação)</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> Vite (build tool)</li>
-          </ul>
-
-          <h3 className="text-sm font-semibold text-graphite-200 mt-4 mb-2">📱 Versão Android (Flutter)</h3>
-          <ul className="space-y-2 text-sm text-graphite-300">
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> Flutter + Dart</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> SQLite + Drift</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> Riverpod (estado)</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> GoRouter (navegação)</li>
-            <li className="flex items-center gap-2"><span className="text-violet-accent">•</span> WorkManager (background)</li>
-          </ul>
-        </div>
-
-        <div className="glass-card rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-graphite-100 mb-3">📖 Como Usar</h2>
-          <ol className="space-y-2 text-sm text-graphite-300 list-decimal list-inside">
-            <li>Clique em "Importar" na barra lateral</li>
-            <li>Escolha o tipo de importação</li>
-            <li>Selecione imagens do seu dispositivo</li>
-            <li>Preencha as informações da obra</li>
-            <li>Organize os capítulos (opcional)</li>
-            <li>Confirme a importação</li>
-            <li>Acesse a obra na Biblioteca</li>
-            <li>Clique em um capítulo para ler</li>
-          </ol>
-        </div>
-
-        <div className="glass-card rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-graphite-100 mb-3">⌨️ Atalhos do Leitor</h2>
-          <div className="space-y-2 text-sm text-graphite-300">
-            <div className="flex justify-between"><span>Próxima página</span><kbd className="text-xs bg-graphite-800 px-2 py-0.5 rounded">→ / Espaço</kbd></div>
-            <div className="flex justify-between"><span>Página anterior</span><kbd className="text-xs bg-graphite-800 px-2 py-0.5 rounded">←</kbd></div>
-            <div className="flex justify-between"><span>Fechar leitor</span><kbd className="text-xs bg-graphite-800 px-2 py-0.5 rounded">Esc</kbd></div>
-            <div className="flex justify-between"><span>Mostrar/ocultar controles</span><kbd className="text-xs bg-graphite-800 px-2 py-0.5 rounded">Clique centro</kbd></div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 

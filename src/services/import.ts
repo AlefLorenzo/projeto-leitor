@@ -1,5 +1,6 @@
 import { Manga, Chapter, Page, ImportOptions, ChapterImport, ImportResult, ReadingDirection, MangaType } from '../types';
 import { generateId, saveManga, saveChapter, savePages, saveProgress } from './database';
+import JSZip from 'jszip';
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
 const ARCHIVE_EXTENSIONS = ['cbz', 'zip'];
@@ -152,6 +153,7 @@ export async function importManga(
         pagesCount: chapterPages.length,
         createdAt: now,
         storageSize: chapterSize,
+        isDownloaded: true,
       };
       
       await saveChapter(chapter);
@@ -248,6 +250,7 @@ export async function importImagesAsChapter(
     pagesCount: pages.length,
     createdAt: now,
     storageSize: totalSize,
+    isDownloaded: true,
   };
   
   await saveChapter(chapter);
@@ -316,5 +319,161 @@ export function getDefaultReadingDirection(type: MangaType): ReadingDirection {
     case 'manga': return 'rtl';
     case 'manhwa': return 'vertical';
     case 'manhua': return 'ltr';
+  }
+}
+
+// Extract images from ZIP/CBZ file
+export async function extractImagesFromArchive(file: File): Promise<{ name: string; dataUrl: string }[]> {
+  const zip = new JSZip();
+  const contents = await zip.loadAsync(file);
+  const images: { name: string; dataUrl: string }[] = [];
+
+  const imageFiles = Object.keys(contents.files)
+    .filter(name => {
+      const ext = name.split('.').pop()?.toLowerCase() || '';
+      return IMAGE_EXTENSIONS.includes(ext) && !contents.files[name].dir;
+    })
+    .sort((a, b) => naturalSort(a, b));
+
+  for (const name of imageFiles) {
+    const data = await contents.files[name].async('base64');
+    const ext = name.split('.').pop()?.toLowerCase() || 'jpg';
+    const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+    images.push({
+      name,
+      dataUrl: `data:${mimeType};base64,${data}`,
+    });
+  }
+
+  return images;
+}
+
+// Detect chapters from ZIP/CBZ files (one archive = one chapter)
+export async function extractChaptersFromArchives(files: File[]): Promise<ChapterImport[]> {
+  const chapters: ChapterImport[] = [];
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const chapterName = file.name.replace(/\.(cbz|zip)$/i, '');
+    
+    chapters.push({
+      title: chapterName || `Capítulo ${String(i + 1).padStart(2, '0')}`,
+      number: i + 1,
+      files: [file], // Will be processed as archive
+    });
+  }
+
+  return chapters;
+}
+
+// Import from archive files (CBZ/ZIP)
+export async function importFromArchive(
+  options: ImportOptions,
+  archiveFiles: File[]
+): Promise<ImportResult> {
+  const errors: string[] = [];
+  let totalPages = 0;
+  let totalSize = 0;
+  
+  try {
+    const mangaId = generateId();
+    const now = Date.now();
+    
+    let coverUrl: string | undefined;
+    if (options.coverFile) {
+      try {
+        coverUrl = await createThumbnail(options.coverFile, 400);
+      } catch {
+        errors.push('Não foi possível processar a capa');
+      }
+    }
+    
+    const manga: Manga = {
+      id: mangaId,
+      title: options.title,
+      author: options.author,
+      artist: options.artist,
+      synopsis: options.synopsis,
+      coverUrl,
+      genres: options.genres,
+      type: options.type,
+      readingDirection: options.readingDirection,
+      status: 'reading',
+      language: options.language,
+      source: 'local',
+      createdAt: now,
+      updatedAt: now,
+      isFavorite: false,
+      totalChapters: archiveFiles.length,
+      totalPages: 0,
+      storageSize: 0,
+    };
+    
+    for (let i = 0; i < archiveFiles.length; i++) {
+      const archiveFile = archiveFiles[i];
+      const chapterId = generateId();
+      
+      try {
+        const extractedImages = await extractImagesFromArchive(archiveFile);
+        
+        if (extractedImages.length === 0) {
+          errors.push(`Arquivo "${archiveFile.name}" não contém imagens`);
+          continue;
+        }
+        
+        // Use first image as cover if no cover set
+        if (!coverUrl && i === 0 && extractedImages.length > 0) {
+          coverUrl = extractedImages[0].dataUrl;
+          manga.coverUrl = coverUrl;
+        }
+        
+        const chapterPages: Page[] = extractedImages.map((img, idx) => ({
+          id: generateId(),
+          chapterId,
+          mangaId,
+          pageNumber: idx + 1,
+          imageUrl: img.dataUrl,
+          createdAt: now,
+        }));
+        
+        const chapter: Chapter = {
+          id: chapterId,
+          mangaId,
+          number: i + 1,
+          title: archiveFile.name.replace(/\.(cbz|zip)$/i, '') || `Capítulo ${String(i + 1).padStart(2, '0')}`,
+          pagesCount: chapterPages.length,
+          createdAt: now,
+          storageSize: archiveFile.size,
+          isDownloaded: true,
+        };
+        
+        await saveChapter(chapter);
+        await savePages(chapterPages);
+        
+        totalPages += chapterPages.length;
+        totalSize += archiveFile.size;
+      } catch (err) {
+        errors.push(`Erro ao extrair "${archiveFile.name}": ${err instanceof Error ? err.message : 'Desconhecido'}`);
+      }
+    }
+    
+    manga.totalPages = totalPages;
+    manga.storageSize = totalSize;
+    await saveManga(manga);
+    
+    return {
+      success: errors.length === 0,
+      mangaId,
+      chaptersCreated: archiveFiles.length,
+      pagesCreated: totalPages,
+      errors,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      chaptersCreated: 0,
+      pagesCreated: 0,
+      errors: [`Erro na importação: ${error instanceof Error ? error.message : 'Desconhecido'}`],
+    };
   }
 }

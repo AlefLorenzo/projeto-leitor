@@ -141,30 +141,38 @@ export default function HomePage({ onOpenManga, onReadChapter, onImport }: HomeP
       {mangas.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold text-graphite-100 mb-4">⚡ Ações Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <button
               onClick={onImport}
               className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
             >
               <span className="text-2xl mb-2 block">📂</span>
-              <h3 className="text-sm font-medium text-graphite-200">Importar Nova Obra</h3>
-              <p className="text-xs text-graphite-500 mt-1">Adicionar mangá, manhwa ou manhua</p>
+              <h3 className="text-sm font-medium text-graphite-200">Importar</h3>
+              <p className="text-xs text-graphite-500 mt-1">Adicionar nova obra</p>
             </button>
             <button
               onClick={() => onOpenManga(mangas[0]?.id || '')}
               className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
             >
               <span className="text-2xl mb-2 block">📖</span>
-              <h3 className="text-sm font-medium text-graphite-200">Continuar Lendo</h3>
-              <p className="text-xs text-graphite-500 mt-1">Retomar de onde parou</p>
+              <h3 className="text-sm font-medium text-graphite-200">Ler</h3>
+              <p className="text-xs text-graphite-500 mt-1">Continuar lendo</p>
+            </button>
+            <button
+              onClick={() => {}}
+              className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
+            >
+              <span className="text-2xl mb-2 block">🔍</span>
+              <h3 className="text-sm font-medium text-graphite-200">Explorar</h3>
+              <p className="text-xs text-graphite-500 mt-1">Descobrir obras</p>
             </button>
             <button
               onClick={() => {}}
               className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
             >
               <span className="text-2xl mb-2 block">📊</span>
-              <h3 className="text-sm font-medium text-graphite-200">Estatísticas</h3>
-              <p className="text-xs text-graphite-500 mt-1">{stats.totalPages} páginas na biblioteca</p>
+              <h3 className="text-sm font-medium text-graphite-200">Stats</h3>
+              <p className="text-xs text-graphite-500 mt-1">{stats.totalPages} páginas</p>
             </button>
           </div>
         </section>

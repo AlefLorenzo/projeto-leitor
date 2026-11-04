@@ -4,6 +4,7 @@ export type MangaType = 'manga' | 'manhwa' | 'manhua';
 export type ReadingDirection = 'rtl' | 'ltr' | 'vertical';
 export type ReadingStatus = 'reading' | 'want_to_read' | 'completed' | 'paused' | 'dropped';
 export type ImportSource = 'local' | 'online';
+export type DownloadStatus = 'waiting' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled';
 
 export interface Manga {
   id: string;
@@ -11,7 +12,7 @@ export interface Manga {
   author?: string;
   artist?: string;
   synopsis?: string;
-  coverUrl?: string; // base64 or blob URL
+  coverUrl?: string;
   genres: string[];
   type: MangaType;
   readingDirection: ReadingDirection;
@@ -24,17 +25,26 @@ export interface Manga {
   isFavorite: boolean;
   totalChapters: number;
   totalPages: number;
-  storageSize: number; // bytes
+  storageSize: number;
+  // Online catalog fields
+  catalogId?: string;
+  catalogProvider?: string;
+  externalUrl?: string;
+  autoDownload?: boolean;
 }
 
 export interface Chapter {
   id: string;
   mangaId: string;
-  number: number; // for sorting
-  title: string; // e.g. "Capítulo 01", "Prólogo", "Especial"
+  number: number;
+  title: string;
   pagesCount: number;
   createdAt: number;
   storageSize: number;
+  // Online fields
+  externalUrl?: string;
+  isDownloaded: boolean;
+  scanlator?: string;
 }
 
 export interface Page {
@@ -42,7 +52,7 @@ export interface Page {
   chapterId: string;
   mangaId: string;
   pageNumber: number;
-  imageUrl: string; // blob URL or base64
+  imageUrl: string;
   filePath?: string;
   createdAt: number;
 }
@@ -81,4 +91,109 @@ export interface ImportResult {
   chaptersCreated: number;
   pagesCreated: number;
   errors: string[];
+}
+
+// Catalog types
+export interface CatalogProvider {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  baseUrl: string;
+  catalogUrl: string;
+  enabled: boolean;
+  lastUpdated?: number;
+}
+
+export interface CatalogManga {
+  id: string;
+  providerId: string;
+  title: string;
+  author?: string;
+  synopsis?: string;
+  coverUrl: string;
+  genres: string[];
+  type: MangaType;
+  status: string;
+  chapters: CatalogChapter[];
+  totalViews?: number;
+  rating?: number;
+  year?: number;
+}
+
+export interface CatalogChapter {
+  id: string;
+  number: number;
+  title: string;
+  date?: string;
+  pagesCount?: number;
+  size?: number;
+  downloadUrl?: string;
+}
+
+// Download types
+export interface DownloadTask {
+  id: string;
+  mangaId: string;
+  chapterId: string;
+  mangaTitle: string;
+  chapterTitle: string;
+  status: DownloadStatus;
+  progress: number; // 0-100
+  totalFiles: number;
+  downloadedFiles: number;
+  totalSize: number;
+  downloadedSize: number;
+  url?: string;
+  error?: string;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  retries: number;
+  maxRetries: number;
+}
+
+// Settings
+export interface AppSettings {
+  readerMode: ReadingDirection;
+  zoomLevel: number;
+  brightness: number;
+  showPageNumber: boolean;
+  keepScreenOn: boolean;
+  immersiveMode: boolean;
+  autoSaveProgress: boolean;
+  downloadWifiOnly: boolean;
+  maxConcurrentDownloads: number;
+  maxStorageMB: number;
+  updateIntervalHours: number;
+  autoUpdate: boolean;
+  notificationsEnabled: boolean;
+  language: string;
+  theme: 'dark' | 'amoled';
+}
+
+// Statistics
+export interface ReadingStats {
+  totalMangas: number;
+  totalChapters: number;
+  totalPages: number;
+  totalReadTime: number; // minutes
+  totalPagesRead: number;
+  longestStreak: number; // days
+  currentStreak: number;
+  averagePerPage: number;
+  favoriteGenres: { genre: string; count: number }[];
+  readingByDay: { day: string; count: number }[];
+  monthlyActivity: { month: string; pages: number }[];
+}
+
+// Notification
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  createdAt: number;
+  read: boolean;
+  actionUrl?: string;
 }

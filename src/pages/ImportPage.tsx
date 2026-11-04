@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { ImportOptions, ChapterImport, MangaType, ReadingDirection } from '../types';
-import { importManga, detectChaptersFromFiles, getDefaultReadingDirection, formatFileSize } from '../services/import';
+import { importManga, importFromArchive, detectChaptersFromFiles, getDefaultReadingDirection, formatFileSize } from '../services/import';
 
 interface ImportPageProps {
   onComplete: (mangaId: string) => void;
@@ -123,6 +123,21 @@ export default function ImportPage({ onComplete, onCancel }: ImportPageProps) {
     setStep('processing');
     setErrors([]);
 
+    // Check if files are archives (CBZ/ZIP)
+    const isArchive = files.length > 0 && files.every(f => f.name.match(/\.(cbz|zip)$/i));
+
+    if (isArchive) {
+      const res = await importFromArchive(options, files);
+      setResult(res);
+      if (res.success || res.mangaId) {
+        setStep('done');
+      } else {
+        setErrors(res.errors);
+        setStep('chapters');
+      }
+      return;
+    }
+
     const validChapters = chapters.filter(c => c.files.length > 0);
     if (validChapters.length === 0) {
       setErrors(['Adicione pelo menos um capítulo com páginas']);
@@ -191,7 +206,7 @@ export default function ImportPage({ onComplete, onCancel }: ImportPageProps) {
       {step === 'type' && (
         <div className="glass-card rounded-xl p-6">
           <h2 className="text-lg font-semibold text-graphite-100 mb-4">Tipo de Importação</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => { setImportType('single'); setStep('files'); }}
               className="p-6 rounded-xl border border-graphite-700/30 hover:border-violet-accent/40 transition-all text-left bg-graphite-800/30 hover:bg-graphite-800/50"
@@ -207,6 +222,32 @@ export default function ImportPage({ onComplete, onCancel }: ImportPageProps) {
               <span className="text-3xl mb-3 block">📁</span>
               <h3 className="text-sm font-semibold text-graphite-100 mb-1">Pasta com Capítulos</h3>
               <p className="text-xs text-graphite-400">Selecionar uma pasta com subpastas por capítulo</p>
+            </button>
+            <button
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.accept = '.cbz,.zip';
+                input.onchange = async (e) => {
+                  const target = e.target as HTMLInputElement;
+                  if (target.files && target.files.length > 0) {
+                    const archiveFiles = Array.from(target.files);
+                    setFiles(archiveFiles);
+                    setImportType('multi');
+                    // Auto-set title from first file
+                    const firstName = archiveFiles[0].name.replace(/\.(cbz|zip)$/i, '');
+                    setOptions(prev => ({ ...prev, title: firstName || 'Obra Importada' }));
+                    setStep('info');
+                  }
+                };
+                input.click();
+              }}
+              className="p-6 rounded-xl border border-graphite-700/30 hover:border-violet-accent/40 transition-all text-left bg-graphite-800/30 hover:bg-graphite-800/50"
+            >
+              <span className="text-3xl mb-3 block">📦</span>
+              <h3 className="text-sm font-semibold text-graphite-100 mb-1">Arquivos CBZ/ZIP</h3>
+              <p className="text-xs text-graphite-400">Cada arquivo será um capítulo</p>
             </button>
           </div>
         </div>
