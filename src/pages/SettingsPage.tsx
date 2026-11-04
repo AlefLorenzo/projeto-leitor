@@ -5,6 +5,7 @@ import { getStorageStats, getAllMangas, deleteManga } from '../services/database
 import { formatFileSize } from '../services/import';
 import { clearAllData, seedDemoData } from '../services/seed';
 import { useToast } from '../components/Toast';
+import { checkRemoteUpdate, applyOtaUpdate, CURRENT_APP_VERSION, UpdateCheckResult } from '../services/otaUpdate';
 
 export default function SettingsPage() {
   const { addToast } = useToast();
@@ -13,6 +14,42 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [reloading, setReloading] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [isApplyingUpdate, setIsApplyingUpdate] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const res = await checkRemoteUpdate();
+      setUpdateInfo(res);
+      if (res.hasUpdate) {
+        addToast(`Nova versão ${res.remoteVersion} encontrada!`, 'success');
+      } else {
+        addToast('Você já está na versão mais recente', 'info');
+      }
+    } catch {
+      addToast('Erro ao consultar atualizações no GitHub', 'error');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleApplyUpdate = async () => {
+    if (!updateInfo?.bundleUrl) return;
+    setIsApplyingUpdate(true);
+    try {
+      addToast('Baixando pacote web do GitHub...', 'info');
+      await applyOtaUpdate(updateInfo.bundleUrl, updateInfo.remoteVersion || '1.1.0', (pct) => {
+        setUpdateProgress(pct);
+      });
+      addToast('Atualização aplicada com sucesso! Reiniciando...', 'success');
+    } catch (err: any) {
+      addToast(err?.message || 'Falha ao aplicar atualização OTA', 'error');
+      setIsApplyingUpdate(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -251,13 +288,54 @@ export default function SettingsPage() {
         />
       </section>
 
+      {/* OTA Live Update */}
+      <section className="glass-card rounded-xl p-5 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-graphite-100 flex items-center gap-2">
+            <span>🚀</span> Atualização OTA (Live Update)
+          </h2>
+          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-accent/20 text-violet-light border border-violet-accent/30 font-semibold">
+            v{CURRENT_APP_VERSION}
+          </span>
+        </div>
+        <p className="text-xs text-graphite-400 mb-4">
+          Verifica e aplica atualizações de interface e correções diretamente do GitHub sem precisar reinstalar o APK.
+        </p>
+
+        {updateInfo?.hasUpdate ? (
+          <div className="bg-emerald-950/40 border border-emerald-800/50 rounded-xl p-3.5 mb-3">
+            <p className="text-xs font-semibold text-emerald-400 mb-1">
+              ✨ Nova versão disponível: {updateInfo.remoteVersion}
+            </p>
+            {updateInfo.releaseNotes && (
+              <p className="text-[11px] text-graphite-300 mb-3">{updateInfo.releaseNotes}</p>
+            )}
+            <button
+              onClick={handleApplyUpdate}
+              disabled={isApplyingUpdate}
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50 shadow"
+            >
+              {isApplyingUpdate ? `Instalando atualização (${updateProgress}%)...` : '⚡ Aplicar Atualização Agora'}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleCheckUpdate}
+            disabled={checkingUpdate}
+            className="w-full py-2 bg-graphite-800 hover:bg-graphite-700 text-graphite-200 rounded-lg text-xs font-medium border border-graphite-700/50 transition disabled:opacity-50"
+          >
+            {checkingUpdate ? 'Verificando no GitHub...' : '🔍 Verificar Atualizações no GitHub'}
+          </button>
+        )}
+      </section>
+
       {/* About */}
       <section className="glass-card rounded-xl p-5">
         <h2 className="text-sm font-semibold text-graphite-100 mb-4 flex items-center gap-2">
           <span>ℹ️</span> Sobre
         </h2>
         <div className="space-y-2 text-xs text-graphite-400">
-          <p><span className="text-graphite-300">Manga Offline</span> — v1.0.0</p>
+          <p><span className="text-graphite-300">Manga Offline</span> — v{CURRENT_APP_VERSION}</p>
           <p>Aplicativo de leitura offline com biblioteca pessoal</p>
           <p>Desenvolvido com React + TypeScript + IndexedDB</p>
           <p className="text-graphite-500 mt-2">Design: Dark Premium (Grafite + Violeta)</p>

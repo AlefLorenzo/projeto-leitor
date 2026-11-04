@@ -13,6 +13,7 @@ import FileManagerPage from './pages/FileManagerPage';
 import TelegramPage from './pages/TelegramPage';
 import { NotificationBell } from './components/NotificationBell';
 import { getAllMangas, getManga } from './services/database';
+import { notifyOtaReady } from './services/otaUpdate';
 
 type View = 'home' | 'library' | 'import' | 'details' | 'reader' | 'explore' | 'downloads' | 'statistics' | 'settings' | 'files' | 'telegram';
 
@@ -29,6 +30,7 @@ function App() {
     const checkInitialState = async () => {
       try {
         await getAllMangas();
+        await notifyOtaReady();
       } catch (error) {
         console.error('Error initializing database:', error);
       }

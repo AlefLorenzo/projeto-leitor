@@ -90,6 +90,63 @@ export async function markChapterAsInProgress(chapterId: string): Promise<void> 
   }
 }
 
+export async function markChapterAsUnread(chapterId: string): Promise<void> {
+  const db = await getDB();
+  const chapter = await db.get('chapters', chapterId);
+  if (chapter) {
+    chapter.readStatus = 'not_started';
+    await db.put('chapters', chapter);
+  }
+
+  const allProgress = await db.getAll('progress');
+  const matching = allProgress.find((p: ReadingProgress) => p.chapterId === chapterId);
+  if (matching) {
+    await db.delete('progress', matching.id);
+  }
+}
+
+export async function markAllChaptersAsCompleted(mangaId: string): Promise<void> {
+  const db = await getDB();
+  const chapters = await db.getAllFromIndex('chapters', 'mangaId', mangaId);
+  const tx = db.transaction('chapters', 'readwrite');
+  for (const ch of chapters) {
+    ch.readStatus = 'completed';
+    await tx.store.put(ch);
+  }
+  await tx.done;
+}
+
+export async function markAllChaptersAsUnread(mangaId: string): Promise<void> {
+  const db = await getDB();
+  const chapters = await db.getAllFromIndex('chapters', 'mangaId', mangaId);
+  const tx = db.transaction('chapters', 'readwrite');
+  for (const ch of chapters) {
+    ch.readStatus = 'not_started';
+    await tx.store.put(ch);
+  }
+  await tx.done;
+
+  const allProgress = await db.getAllFromIndex('progress', 'mangaId', mangaId);
+  const pTx = db.transaction('progress', 'readwrite');
+  for (const p of allProgress) {
+    await pTx.store.delete(p.id);
+  }
+  await pTx.done;
+}
+
+export async function markSelectedChapters(chapterIds: string[], status: ChapterReadStatus): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('chapters', 'readwrite');
+  for (const id of chapterIds) {
+    const ch = await tx.store.get(id);
+    if (ch) {
+      ch.readStatus = status;
+      await tx.store.put(ch);
+    }
+  }
+  await tx.done;
+}
+
 // Enhanced progress saving
 export async function saveEnhancedProgress(
   mangaId: string,
@@ -189,12 +246,26 @@ export async function isLastChapter(mangaId: string, chapterId: string): Promise
 export async function getChaptersWithStatus(mangaId: string): Promise<(Chapter & { readStatus: ChapterReadStatus })[]> {
   const db = await getDB();
   const chapters = await db.getAllFromIndex('chapters', 'mangaId', mangaId);
+  const allProgress = await db.getAllFromIndex('progress', 'mangaId', mangaId);
+  const progressMap = new Map<string, ReadingProgress>();
+  for (const p of allProgress) {
+    progressMap.set(p.chapterId, p);
+  }
+
   return chapters
     .sort((a: Chapter, b: Chapter) => a.number - b.number)
-    .map((c: Chapter) => ({
-      ...c,
-      readStatus: c.readStatus || 'not_started',
-    }));
+    .map((c: Chapter) => {
+      let status: ChapterReadStatus = c.readStatus || 'not_started';
+      const prog = progressMap.get(c.id);
+      if (!c.readStatus && prog) {
+        if (prog.completed) status = 'completed';
+        else if (prog.pageNumber > 1 || (prog.percentComplete && prog.percentComplete > 0)) status = 'in_progress';
+      }
+      return {
+        ...c,
+        readStatus: status,
+      };
+    });
 }
 
 // Get continue reading info

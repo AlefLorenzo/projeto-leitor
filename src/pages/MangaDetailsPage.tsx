@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useMangaDetails } from '../hooks/useMangaStore';
 import { getMangaTypeLabel, getReadingDirectionLabel, formatFileSize } from '../services/import';
-import { getChaptersWithStatus } from '../services/readingProgress';
-import { getContinueReadingInfo } from '../services/readingProgress';
+import {
+  getChaptersWithStatus,
+  getContinueReadingInfo,
+  markChapterAsCompleted,
+  markChapterAsUnread,
+  markAllChaptersAsCompleted,
+  markAllChaptersAsUnread,
+} from '../services/readingProgress';
 import { ReadingStatus, Manga, Chapter, ChapterReadStatus, ReadingProgress } from '../types';
 import { deleteManga, saveManga, getManga } from '../services/database';
 import { useToast } from '../components/Toast';
@@ -20,34 +26,36 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
   const { addToast } = useToast();
   const { manga, chapters, progress, loading, reload } = useMangaDetails(mangaId);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMarkAllReadConfirm, setShowMarkAllReadConfirm] = useState(false);
+  const [showResetAllUnreadConfirm, setShowResetAllUnreadConfirm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState<Partial<Manga>>({});
   const [chaptersWithStatus, setChaptersWithStatus] = useState<(Chapter & { readStatus: ChapterReadStatus })[]>([]);
   const [continueInfo, setContinueInfo] = useState<{ chapter: Chapter | null; progress: ReadingProgress | null } | null>(null);
-  const [chapterFilter, setChapterFilter] = useState<'all' | 'unread' | 'reading' | 'completed'>('all');
+  const [chapterFilter, setChapterFilter] = useState<'all' | 'unread' | 'reading' | 'completed' | 'downloaded' | 'not_downloaded'>('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const loadExtra = async () => {
+    if (!mangaId) return;
+    const [chStatus, contInfo] = await Promise.all([
+      getChaptersWithStatus(mangaId),
+      getContinueReadingInfo(mangaId),
+    ]);
+    setChaptersWithStatus(chStatus);
+    setContinueInfo(contInfo);
+  };
 
   useEffect(() => {
-    const loadExtra = async () => {
-      const [chStatus, contInfo] = await Promise.all([
-        getChaptersWithStatus(mangaId),
-        getContinueReadingInfo(mangaId),
-      ]);
-      setChaptersWithStatus(chStatus);
-      setContinueInfo(contInfo);
-    };
-    if (mangaId) loadExtra();
+    loadExtra();
   }, [mangaId, chapters]);
 
-  // Force reload when component becomes visible (user returns from reader)
+  // Recarrega quando o usuário retorna do leitor
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && mangaId) {
-        // Reload chapter statuses when page becomes visible
-        getChaptersWithStatus(mangaId).then(setChaptersWithStatus);
-        getContinueReadingInfo(mangaId).then(setContinueInfo);
+        loadExtra();
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [mangaId]);
@@ -122,6 +130,32 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
     }
   };
 
+  const handleToggleChapterStatus = async (e: React.MouseEvent, chapter: Chapter & { readStatus: ChapterReadStatus }) => {
+    e.stopPropagation();
+    if (chapter.readStatus === 'completed') {
+      await markChapterAsUnread(chapter.id);
+      addToast(`Capítulo marcado como não lido`, 'info');
+    } else {
+      await markChapterAsCompleted(chapter.id);
+      addToast(`Capítulo marcado como concluído`, 'success');
+    }
+    await loadExtra();
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllChaptersAsCompleted(manga.id);
+    setShowMarkAllReadConfirm(false);
+    addToast('Todos os capítulos foram marcados como concluídos', 'success');
+    await loadExtra();
+  };
+
+  const handleResetAllUnread = async () => {
+    await markAllChaptersAsUnread(manga.id);
+    setShowResetAllUnreadConfirm(false);
+    addToast('Todos os capítulos foram redefinidos para não lidos', 'info');
+    await loadExtra();
+  };
+
   const statusLabels: Record<ReadingStatus, string> = {
     reading: '📖 Lendo',
     want_to_read: '📋 Quero ler',
@@ -137,33 +171,44 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
   };
 
   const readStatusLabels: Record<ChapterReadStatus, string> = {
-    not_started: 'Não iniciado',
+    not_started: 'Não lido',
     in_progress: 'Em andamento',
     completed: 'Concluído',
   };
 
   const readStatusColors: Record<ChapterReadStatus, string> = {
     not_started: 'text-graphite-500',
-    in_progress: 'text-violet-light',
-    completed: 'text-success',
+    in_progress: 'text-amber-400',
+    completed: 'text-emerald-400',
   };
 
-  // Filter chapters
-  const filteredChapters = chaptersWithStatus.filter(ch => {
-    if (chapterFilter === 'all') return true;
-    return ch.readStatus === chapterFilter;
-  });
-
-  // Calculate chapter counts
+  // Contabilização de capítulos (Soma Exata: Total = Não lidos + Em andamento + Concluídos)
   const totalCount = chaptersWithStatus.length;
   const completedCount = chaptersWithStatus.filter(ch => ch.readStatus === 'completed').length;
   const inProgressCount = chaptersWithStatus.filter(ch => ch.readStatus === 'in_progress').length;
   const unreadCount = chaptersWithStatus.filter(ch => ch.readStatus === 'not_started').length;
+  const downloadedCount = chaptersWithStatus.filter(ch => ch.isDownloaded).length;
+  const readingPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Filtragem e ordenação dos capítulos
+  const filteredChapters = chaptersWithStatus
+    .filter(ch => {
+      if (chapterFilter === 'all') return true;
+      if (chapterFilter === 'unread') return ch.readStatus === 'not_started';
+      if (chapterFilter === 'reading') return ch.readStatus === 'in_progress';
+      if (chapterFilter === 'completed') return ch.readStatus === 'completed';
+      if (chapterFilter === 'downloaded') return ch.isDownloaded;
+      if (chapterFilter === 'not_downloaded') return !ch.isDownloaded;
+      return true;
+    })
+    .sort((a, b) => {
+      return sortOrder === 'asc' ? a.number - b.number : b.number - a.number;
+    });
 
   return (
     <div className="slide-up">
       {/* Back button */}
-      <button onClick={onBack} className="flex items-center gap-2 text-sm text-graphite-400 hover:text-graphite-200 mb-4">
+      <button onClick={onBack} className="flex items-center gap-2 text-sm text-graphite-400 hover:text-graphite-200 mb-4 transition">
         ← Voltar à biblioteca
       </button>
 
@@ -184,13 +229,13 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4 mb-2">
-              <div>
+              <div className="flex-1 min-w-0">
                 <h1 className="text-xl sm:text-2xl font-bold text-graphite-100 mb-1 break-words">{manga.title}</h1>
                 {manga.author && <p className="text-sm text-graphite-400">por {manga.author}</p>}
               </div>
               <button
                 onClick={handleToggleFavorite}
-                className="text-2xl hover:scale-110 transition-transform"
+                className="text-2xl hover:scale-110 transition-transform flex-shrink-0"
                 title={manga.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
               >
                 {manga.isFavorite ? '⭐' : '☆'}
@@ -206,26 +251,37 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
               ))}
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mb-4">
-              <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
+            {/* 3.4 Painel de Progresso da Obra */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-3">
+              <div className="bg-graphite-800/40 rounded-lg p-2.5 text-center">
                 <p className="text-base sm:text-lg font-bold text-graphite-100 truncate">{totalCount}</p>
-                <p className="text-[10px] text-graphite-500">Total</p>
+                <p className="text-[10px] text-graphite-500">📚 Total de Capítulos</p>
               </div>
-              <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
+              <div className="bg-graphite-800/40 rounded-lg p-2.5 text-center">
                 <p className="text-base sm:text-lg font-bold text-graphite-400 truncate">{unreadCount}</p>
-                <p className="text-[10px] text-graphite-500">Não lidos</p>
+                <p className="text-[10px] text-graphite-500">🔵 Não lidos</p>
               </div>
-              <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-base sm:text-lg font-bold text-violet-light truncate">{inProgressCount}</p>
-                <p className="text-[10px] text-graphite-500">Em andamento</p>
+              <div className="bg-graphite-800/40 rounded-lg p-2.5 text-center">
+                <p className="text-base sm:text-lg font-bold text-amber-400 truncate">{inProgressCount}</p>
+                <p className="text-[10px] text-graphite-500">🟡 Em andamento</p>
               </div>
-              <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-base sm:text-lg font-bold text-success truncate">{completedCount}</p>
-                <p className="text-[10px] text-graphite-500">Concluídos</p>
+              <div className="bg-graphite-800/40 rounded-lg p-2.5 text-center">
+                <p className="text-base sm:text-lg font-bold text-emerald-400 truncate">{completedCount}</p>
+                <p className="text-[10px] text-graphite-500">🟢 Concluídos</p>
               </div>
-              <div className="bg-graphite-800/40 rounded-lg p-2 text-center col-span-2 sm:col-span-1">`r`n                <p className="text-base sm:text-base sm:text-lg font-bold text-graphite-100 truncate truncate">{formatFileSize(manga.storageSize)}</p>
-                <p className="text-[10px] text-graphite-500">Tamanho</p>
+            </div>
+
+            {/* Barra de Progresso Visual de Leitura */}
+            <div className="mb-4 bg-graphite-850/60 rounded-lg p-2.5 border border-graphite-800">
+              <div className="flex justify-between items-center text-xs mb-1.5">
+                <span className="text-graphite-300 font-medium">📖 Progresso de Leitura</span>
+                <span className="text-violet-light font-bold font-mono">{readingPercent}%</span>
+              </div>
+              <div className="w-full h-2 bg-graphite-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-accent to-emerald-400 transition-all duration-300"
+                  style={{ width: `${readingPercent}%` }}
+                />
               </div>
             </div>
 
@@ -237,12 +293,12 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">▶️</span>
-                  <div className="flex-1">
-                    <p className="text-xs text-violet-light font-medium">Continuar lendo</p>
-                    <p className="text-sm text-graphite-200">{continueInfo.chapter.title}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-violet-light font-medium">Continuar lendo de onde parou</p>
+                    <p className="text-sm font-semibold text-graphite-200 truncate">{continueInfo.chapter.title}</p>
                     {continueInfo.progress && (
                       <p className="text-xs text-graphite-400">
-                        Página {continueInfo.progress.pageNumber} de {continueInfo.progress.totalPages} • {continueInfo.progress.percentComplete}%
+                        Página {continueInfo.progress.pageNumber} de {continueInfo.progress.totalPages} • {continueInfo.progress.percentComplete}% concluído
                       </p>
                     )}
                   </div>
@@ -287,40 +343,80 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
 
         {/* Synopsis */}
         {manga.synopsis && (
-          <div className="px-6 pb-4">
+          <div className="px-4 sm:px-6 pb-4">
             <p className="text-sm text-graphite-300 leading-relaxed">{manga.synopsis}</p>
           </div>
         )}
       </div>
 
-      {/* Chapters List */}
+      {/* 3.8 / 3.9 Chapters Section with Filters and Sort */}
       <div className="glass-card rounded-xl p-4">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h2 className="text-lg font-semibold text-graphite-100">Índice de Capítulos</h2>
-          <div className="flex gap-1">
-            {(['all', 'unread', 'reading', 'completed'] as const).map(filter => (
+          <div>
+            <h2 className="text-lg font-semibold text-graphite-100">Índice de Capítulos</h2>
+            <p className="text-xs text-graphite-400">
+              {filteredChapters.length} de {totalCount} capítulos exibidos
+            </p>
+          </div>
+
+          {/* 3.10 Ações em Lote */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+              className="px-2.5 py-1 text-xs bg-graphite-800 text-graphite-300 hover:text-white rounded border border-graphite-700/40 transition"
+              title="Alternar ordem crescente/decrescente"
+            >
+              {sortOrder === 'asc' ? '⬆️ 1 → N' : '⬇️ N → 1'}
+            </button>
+            {unreadCount > 0 && (
               <button
-                key={filter}
-                onClick={() => setChapterFilter(filter)}
-                className={`px-2 py-1 rounded text-xs transition-all ${
-                  chapterFilter === filter
-                    ? 'bg-violet-accent/20 text-violet-light border border-violet-accent/40'
-                    : 'text-graphite-500 hover:text-graphite-300'
-                }`}
+                onClick={() => setShowMarkAllReadConfirm(true)}
+                className="px-2.5 py-1 text-xs bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60 rounded border border-emerald-800/50 transition"
               >
-                {filter === 'all' ? 'Todos' : 
-                 filter === 'unread' ? 'Não lidos' :
-                 filter === 'reading' ? 'Em andamento' : 'Concluídos'}
+                ✓ Marcar todos lidos
               </button>
-            ))}
+            )}
+            {completedCount > 0 && (
+              <button
+                onClick={() => setShowResetAllUnreadConfirm(true)}
+                className="px-2.5 py-1 text-xs bg-graphite-800 text-graphite-400 hover:text-graphite-200 rounded border border-graphite-700/40 transition"
+              >
+                ↺ Redefinir para não lidos
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Filtros da Obra */}
+        <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+          {[
+            { id: 'all', label: `Todos (${totalCount})` },
+            { id: 'unread', label: `Não lidos (${unreadCount})` },
+            { id: 'reading', label: `Em andamento (${inProgressCount})` },
+            { id: 'completed', label: `Concluídos (${completedCount})` },
+            { id: 'downloaded', label: `💾 Baixados (${downloadedCount})` },
+            { id: 'not_downloaded', label: `☁️ Não baixados (${totalCount - downloadedCount})` },
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setChapterFilter(f.id as any)}
+              className={`px-2.5 py-1 rounded text-xs whitespace-nowrap transition-all ${
+                chapterFilter === f.id
+                  ? 'bg-violet-accent/20 text-violet-light border border-violet-accent/40 font-medium'
+                  : 'text-graphite-400 hover:text-graphite-200 bg-graphite-800/40 border border-transparent'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Lista de Capítulos */}
         {filteredChapters.length === 0 ? (
           <div className="text-center py-8">
             <span className="text-3xl mb-2 block">📭</span>
             <p className="text-sm text-graphite-400">
-              {chapters.length === 0 ? 'Nenhum capítulo importado' : 'Nenhum capítulo com este filtro'}
+              {chapters.length === 0 ? 'Nenhum capítulo importado nesta obra.' : 'Nenhum capítulo com este filtro.'}
             </p>
           </div>
         ) : (
@@ -328,40 +424,60 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
             {filteredChapters.map((chapter) => {
               const isCurrentProgress = progress?.chapterId === chapter.id;
               const status = chapter.readStatus || 'not_started';
-              
+
               return (
-                <button
+                <div
                   key={chapter.id}
                   onClick={() => onRead(chapter.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${
+                  className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl transition-all cursor-pointer text-left ${
                     isCurrentProgress
                       ? 'bg-violet-accent/10 border border-violet-accent/30'
                       : 'bg-graphite-800/30 hover:bg-graphite-800/50 border border-transparent'
                   }`}
                 >
-                  <div className={`text-lg ${readStatusColors[status]}`}>
+                  {/* Status Icon */}
+                  <div className={`text-lg flex-shrink-0 ${readStatusColors[status]}`}>
                     {readStatusIcons[status]}
                   </div>
+
+                  {/* Chapter Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-graphite-200 truncate">{chapter.title}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-graphite-500">{chapter.pagesCount} páginas</p>
-                      <span className="text-xs text-graphite-600">•</span>
-                      <p className={`text-xs ${readStatusColors[status]}`}>{readStatusLabels[status]}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-graphite-500">{chapter.pagesCount} páginas</span>
+                      <span className="text-[11px] text-graphite-600">•</span>
+                      <span className={`text-[11px] font-semibold ${readStatusColors[status]}`}>
+                        {readStatusLabels[status]}
+                      </span>
+                      <span className="text-[11px] text-graphite-600">•</span>
+                      <span className={`text-[11px] ${chapter.isDownloaded ? 'text-emerald-400' : 'text-graphite-500'}`}>
+                        {chapter.isDownloaded ? `💾 Offline (${formatFileSize(chapter.storageSize || 0)})` : '☁️ Nuvem'}
+                      </span>
                     </div>
                   </div>
-                  {isCurrentProgress && progress && (
-                    <div className="text-right">
-                      <span className="text-xs text-violet-light">Pág. {progress.pageNumber}/{progress.totalPages}</span>
-                      <div className="w-16 h-1 bg-graphite-800 rounded-full overflow-hidden mt-1">
-                        <div className="h-full bg-violet-accent" style={{ width: `${progress.percentComplete || 0}%` }}></div>
-                      </div>
-                    </div>
-                  )}
-                  {isCurrentProgress && (
-                    <span className="text-xs text-violet-light">▶</span>
-                  )}
-                </button>
+
+                  {/* Actions / Read Toggle */}
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => handleToggleChapterStatus(e, chapter)}
+                      className={`px-2.5 py-1 text-xs rounded border transition ${
+                        status === 'completed'
+                          ? 'border-emerald-800/60 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/40'
+                          : 'border-graphite-700/50 bg-graphite-800/40 text-graphite-400 hover:text-white'
+                      }`}
+                      title={status === 'completed' ? 'Marcar como não lido' : 'Marcar como concluído'}
+                    >
+                      {status === 'completed' ? '✓ Lido' : 'Marcar lido'}
+                    </button>
+                    <button
+                      onClick={() => onRead(chapter.id)}
+                      className="w-7 h-7 rounded-lg bg-violet-accent/20 hover:bg-violet-accent text-violet-light hover:text-white flex items-center justify-center transition text-xs"
+                      title="Abrir no leitor"
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -378,6 +494,30 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
         icon="🗑️"
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      {/* Mark All Read Confirmation */}
+      <ConfirmModal
+        isOpen={showMarkAllReadConfirm}
+        title="Marcar todos como lidos?"
+        message={`Deseja marcar todos os ${totalCount} capítulos de "${manga.title}" como concluídos?`}
+        confirmText="Marcar todos"
+        variant="info"
+        icon="✅"
+        onConfirm={handleMarkAllRead}
+        onCancel={() => setShowMarkAllReadConfirm(false)}
+      />
+
+      {/* Reset All Unread Confirmation */}
+      <ConfirmModal
+        isOpen={showResetAllUnreadConfirm}
+        title="Redefinir para não lidos?"
+        message={`Deseja redefinir o progresso de todos os capítulos de "${manga.title}" para não lidos?`}
+        confirmText="Redefinir"
+        variant="warning"
+        icon="↺"
+        onConfirm={handleResetAllUnread}
+        onCancel={() => setShowResetAllUnreadConfirm(false)}
       />
 
       {/* Edit Modal */}

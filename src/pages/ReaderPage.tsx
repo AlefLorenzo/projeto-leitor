@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMangaDetails } from '../hooks/useMangaStore';
 import { getPagesByChapter } from '../services/database';
 import { 
-  saveEnhancedProgress, 
+  saveEnhancedProgress,
+  markChapterAsUnread, 
   getEnhancedProgress,
   getPreviousChapter,
   getNextChapter,
@@ -430,6 +431,13 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     }
   };
 
+  const handleMarkAsUnread = async () => {
+    await markChapterAsUnread(chapterId);
+    setChapterStatus('not_started');
+    setCurrentPage(0);
+    addToast('Capítulo marcado como não lido', 'info');
+  };
+
   const handleScroll = useCallback(() => {
     if (scrollContainerRef.current && readingDirection === 'vertical') {
       const scrollTop = scrollContainerRef.current.scrollTop;
@@ -716,6 +724,12 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
               className="w-full text-left px-3 py-2 text-xs text-graphite-300 hover:bg-graphite-800/50 rounded transition-colors"
             >
               ✓ Marcar como concluído
+            </button>
+            <button
+              onClick={() => { handleMarkAsUnread(); setShowOptionsMenu(false); }}
+              className="w-full text-left px-3 py-2 text-xs text-graphite-300 hover:bg-graphite-800/50 rounded transition-colors"
+            >
+              ○ Marcar como não lido
             </button>
           </div>
         </div>

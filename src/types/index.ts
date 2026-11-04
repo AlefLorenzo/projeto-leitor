@@ -160,6 +160,9 @@ export interface DownloadTask {
   chapterId: string;
   mangaTitle: string;
   chapterTitle: string;
+  chapterNumber?: number;
+  source?: 'mangadex' | 'telegram' | 'github' | 'local' | string;
+  sourceData?: any;
   status: DownloadStatus;
   progress: number; // 0-100
   totalFiles: number;
@@ -173,6 +176,32 @@ export interface DownloadTask {
   completedAt?: number;
   retries: number;
   maxRetries: number;
+}
+
+export interface DownloadHistoryEntry {
+  id: string;
+  mangaId: string;
+  chapterId: string;
+  mangaTitle: string;
+  chapterTitle: string;
+  chapterNumber: number;
+  completedAt: number;
+  sizeBytes: number;
+  source: string;
+  status: 'completed' | 'failed' | 'cancelled';
+  errorMessage?: string;
+}
+
+export interface DownloadStats {
+  totalDownloads: number;
+  totalChaptersDownloaded: number;
+  totalMangasDownloaded: number;
+  downloading: number;
+  waiting: number;
+  paused: number;
+  completed: number;
+  failed: number;
+  totalBytesDownloaded: number;
 }
 
 // Settings

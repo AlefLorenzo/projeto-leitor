@@ -1,8 +1,8 @@
 import { openDB, IDBPDatabase } from 'idb';
-import { Manga, Chapter, Page, ReadingProgress } from '../types';
+import { Manga, Chapter, Page, ReadingProgress, DownloadTask, DownloadHistoryEntry, DownloadStats } from '../types';
 
 const DB_NAME = 'manga-offline-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbInstance: IDBPDatabase | null = null;
 
@@ -10,7 +10,7 @@ export async function getDB(): Promise<IDBPDatabase> {
   if (dbInstance) return dbInstance;
 
   dbInstance = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion, newVersion, transaction) {
       // Manga store
       if (!db.objectStoreNames.contains('mangas')) {
         const mangaStore = db.createObjectStore('mangas', { keyPath: 'id' });
@@ -45,12 +45,21 @@ export async function getDB(): Promise<IDBPDatabase> {
         progressStore.createIndex('lastReadAt', 'lastReadAt');
       }
 
-      // Downloads store
+      // Downloads store (queue)
       if (!db.objectStoreNames.contains('downloads')) {
         const downloadStore = db.createObjectStore('downloads', { keyPath: 'id' });
         downloadStore.createIndex('mangaId', 'mangaId');
         downloadStore.createIndex('status', 'status');
         downloadStore.createIndex('createdAt', 'createdAt');
+      }
+
+      // Download history store (completed / failed / cancelled history)
+      if (!db.objectStoreNames.contains('download_history')) {
+        const historyStore = db.createObjectStore('download_history', { keyPath: 'id' });
+        historyStore.createIndex('mangaId', 'mangaId');
+        historyStore.createIndex('chapterId', 'chapterId');
+        historyStore.createIndex('completedAt', 'completedAt');
+        historyStore.createIndex('status', 'status');
       }
 
       // Notifications store
@@ -201,6 +210,108 @@ export async function getRecentProgress(limit: number = 10): Promise<ReadingProg
   const db = await getDB();
   const all = await db.getAll('progress');
   return all.sort((a, b) => b.lastReadAt - a.lastReadAt).slice(0, limit);
+}
+
+// Download Tasks (Queue) Operations
+export async function saveDownloadTask(task: DownloadTask): Promise<void> {
+  const db = await getDB();
+  await db.put('downloads', task);
+}
+
+export async function getDownloadTask(id: string): Promise<DownloadTask | undefined> {
+  const db = await getDB();
+  return db.get('downloads', id);
+}
+
+export async function getAllDownloadTasks(): Promise<DownloadTask[]> {
+  const db = await getDB();
+  const all = await db.getAll('downloads');
+  return all.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteDownloadTask(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('downloads', id);
+}
+
+export async function clearCompletedDownloadTasks(): Promise<void> {
+  const db = await getDB();
+  const all = await db.getAll('downloads');
+  const tx = db.transaction('downloads', 'readwrite');
+  for (const task of all) {
+    if (task.status === 'completed' || task.status === 'cancelled') {
+      await tx.store.delete(task.id);
+    }
+  }
+  await tx.done;
+}
+
+// Download History Operations
+export async function addDownloadHistory(entry: DownloadHistoryEntry): Promise<void> {
+  const db = await getDB();
+  if (!db.objectStoreNames.contains('download_history')) return;
+  await db.put('download_history', entry);
+}
+
+export async function getAllDownloadHistory(limit: number = 100): Promise<DownloadHistoryEntry[]> {
+  const db = await getDB();
+  if (!db.objectStoreNames.contains('download_history')) return [];
+  const all = await db.getAll('download_history');
+  return all.sort((a, b) => b.completedAt - a.completedAt).slice(0, limit);
+}
+
+export async function clearDownloadHistory(): Promise<void> {
+  const db = await getDB();
+  if (!db.objectStoreNames.contains('download_history')) return;
+  await db.clear('download_history');
+}
+
+// Real Unified Download Stats
+export async function getRealDownloadStats(): Promise<DownloadStats> {
+  const db = await getDB();
+  
+  // 1. All chapters from library to count real downloaded chapters & mangas
+  const chapters = await db.getAll('chapters');
+  const downloadedChapters = chapters.filter(c => c.isDownloaded);
+  const downloadedMangaIds = new Set(downloadedChapters.map(c => c.mangaId));
+  
+  // 2. Queue tasks
+  const tasks = await db.getAll('downloads');
+  const downloading = tasks.filter(t => t.status === 'downloading').length;
+  const waiting = tasks.filter(t => t.status === 'waiting').length;
+  const paused = tasks.filter(t => t.status === 'paused').length;
+  const completedInQueue = tasks.filter(t => t.status === 'completed').length;
+  const failed = tasks.filter(t => t.status === 'failed').length;
+  
+  // 3. History
+  let historyCompletedCount = 0;
+  let totalBytes = downloadedChapters.reduce((sum, c) => sum + (c.storageSize || 0), 0);
+
+  if (db.objectStoreNames.contains('download_history')) {
+    const history = await db.getAll('download_history');
+    const successfulHistory = history.filter(h => h.status === 'completed');
+    historyCompletedCount = successfulHistory.length;
+    
+    // Add bytes from history if not accounted
+    if (totalBytes === 0) {
+      totalBytes = successfulHistory.reduce((sum, h) => sum + (h.sizeBytes || 0), 0);
+    }
+  }
+
+  // Total operations count = max between history count, queue completed, and downloaded chapters
+  const totalDownloads = Math.max(historyCompletedCount, downloadedChapters.length, completedInQueue);
+
+  return {
+    totalDownloads,
+    totalChaptersDownloaded: downloadedChapters.length,
+    totalMangasDownloaded: downloadedMangaIds.size,
+    downloading,
+    waiting,
+    paused,
+    completed: completedInQueue,
+    failed,
+    totalBytesDownloaded: totalBytes,
+  };
 }
 
 // Utility

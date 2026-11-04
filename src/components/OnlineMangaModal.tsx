@@ -14,6 +14,7 @@ import {
   BatchDownloadProgress,
 } from '../services/sources/onlineDownloader';
 import { getManga, saveManga } from '../services/database';
+import { downloadManager } from '../services/downloadManager';
 import { NativeImage } from './NativeImage';
 
 interface OnlineMangaModalProps {
@@ -98,6 +99,61 @@ export function OnlineMangaModal({
     }
   }, [isOpen, manga]);
 
+  // Sincroniza com a fila persistente do downloadManager em segundo plano
+  useEffect(() => {
+    if (!isOpen || !manga) return;
+    const finalMangaId = manga.id.startsWith('online-') ? manga.id : `online-${manga.id}`;
+
+    const syncWithQueue = () => {
+      const queue = downloadManager.getQueue();
+      const mangaTasks = queue.filter(t => t.mangaId === finalMangaId);
+
+      setActiveProgress((prev) => {
+        const copy = new Map(prev);
+        for (const t of mangaTasks) {
+          const prefix = `ch-${manga.id}-`;
+          const sourceChId = t.chapterId.startsWith(prefix) ? t.chapterId.slice(prefix.length) : t.chapterId;
+
+          if (t.status === 'downloading' || t.status === 'waiting') {
+            copy.set(sourceChId, {
+              chapterId: sourceChId,
+              mangaId: manga.id,
+              chapterNumber: t.chapterNumber || 0,
+              stage: t.status === 'downloading' ? 'downloading_images' : 'fetching_pages',
+              currentImage: t.downloadedFiles || 0,
+              totalImages: t.totalFiles || 0,
+              percent: t.progress || 0,
+              bytesDownloaded: t.downloadedSize || 0,
+            });
+          } else if (t.status === 'completed' || t.status === 'failed' || t.status === 'cancelled') {
+            copy.delete(sourceChId);
+          }
+        }
+        return copy;
+      });
+
+      setDownloadStates((prev) => {
+        const copy = new Map(prev);
+        for (const t of mangaTasks) {
+          const prefix = `ch-${manga.id}-`;
+          const sourceChId = t.chapterId.startsWith(prefix) ? t.chapterId.slice(prefix.length) : t.chapterId;
+          if (t.status === 'downloading' || t.status === 'waiting') {
+            copy.set(sourceChId, 'downloading');
+          } else if (t.status === 'completed') {
+            copy.set(sourceChId, 'downloaded');
+          }
+        }
+        return copy;
+      });
+    };
+
+    syncWithQueue();
+    const unsub = downloadManager.subscribe(() => {
+      syncWithQueue();
+    });
+    return () => unsub();
+  }, [isOpen, manga]);
+
   // Lista única de Scanlators (grupos de tradução) disponíveis para esta obra
   const scanlatorGroups = useMemo(() => {
     const set = new Set<string>();
@@ -168,93 +224,37 @@ export function OnlineMangaModal({
     await saveManga(local);
   };
 
-  // Download Individual
+  // Download Individual desacoplado em segundo plano
   const handleDownloadSingle = async (chapter: SourceChapter) => {
-    const chapterId = chapter.id;
-
-    setActiveProgress((prev) => {
-      const copy = new Map(prev);
-      copy.set(chapterId, {
-        chapterId,
-        mangaId: manga.id,
-        chapterNumber: chapter.number,
-        stage: 'fetching_pages',
-        currentImage: 0,
-        totalImages: 0,
-        percent: 0,
-        bytesDownloaded: 0,
-      });
-      return copy;
-    });
-
-    setDownloadStates((prev) => new Map(prev).set(chapterId, 'downloading'));
-
-    const success = await downloadOnlineChapter(
+    await downloadManager.enqueueOnlineChapter({
       manga,
       chapter,
-      (prog) => {
-        setActiveProgress((prev) => {
-          const copy = new Map(prev);
-          copy.set(chapterId, prog);
-          return copy;
-        });
-      },
-      preferDataSaver
-    );
-
-    setActiveProgress((prev) => {
-      const copy = new Map(prev);
-      copy.delete(chapterId);
-      return copy;
-    });
-
-    setDownloadStates((prev) => {
-      const copy = new Map(prev);
-      copy.set(chapterId, success ? 'downloaded' : 'incomplete');
-      return copy;
+      preferDataSaver,
     });
   };
 
   // Cancelar Download Individual
-  const handleCancelSingle = (chapterId: string) => {
-    cancelOnlineDownload(chapterId);
+  const handleCancelSingle = async (chapterId: string) => {
+    const finalMangaId = manga.id.startsWith('online-') ? manga.id : `online-${manga.id}`;
+    const fullChapterId = `ch-${manga.id}-${chapterId}`;
+    const queue = downloadManager.getQueue();
+    const task = queue.find(t => t.mangaId === finalMangaId && t.chapterId === fullChapterId);
+    if (task) {
+      await downloadManager.cancelTask(task.id);
+    } else {
+      cancelOnlineDownload(chapterId);
+    }
     setActiveProgress((prev) => {
       const copy = new Map(prev);
       copy.delete(chapterId);
       return copy;
     });
-    setDownloadStates((prev) => {
-      const copy = new Map(prev);
-      copy.set(chapterId, 'online');
-      return copy;
-    });
   };
 
-  // Download de Lote (Selecionados ou Todos)
+  // Download de Lote em segundo plano
   const handleDownloadBatch = async (chaptersToDownload: SourceChapter[]) => {
     if (chaptersToDownload.length === 0) return;
-
-    setIsBatchDownloading(true);
-
-    await downloadOnlineBatch(
-      manga,
-      chaptersToDownload,
-      (batchProg) => {
-        setBatchProgress(batchProg);
-      },
-      (chProg) => {
-        setActiveProgress((prev) => {
-          const copy = new Map(prev);
-          copy.set(chProg.chapterId, chProg);
-          return copy;
-        });
-        if (chProg.stage === 'completed') {
-          setDownloadStates((prev) => new Map(prev).set(chProg.chapterId, 'downloaded'));
-        }
-      }
-    );
-
-    setIsBatchDownloading(false);
+    await downloadManager.enqueueOnlineBatch(manga, chaptersToDownload, preferDataSaver);
     setSelectedChapterIds(new Set());
   };
 
