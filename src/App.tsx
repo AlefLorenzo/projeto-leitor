@@ -132,16 +132,16 @@ function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+      <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
         {/* Top Bar */}
-        <div className="sticky top-0 z-30 bg-graphite-950/80 backdrop-blur-sm border-b border-graphite-700/30 px-4 lg:px-8 py-3">
+        <div className="sticky top-0 z-30 bg-graphite-950/85 backdrop-blur-md border-b border-graphite-700/30 px-3 sm:px-6 py-2.5">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-accent to-violet-dark flex items-center justify-center md:hidden">
                 <span className="text-white text-xs font-bold">M</span>
               </div>
               <span className="text-sm font-semibold text-graphite-100">Manga Offline</span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-violet-accent/20 text-violet-light font-mono font-medium">v1.0 Nativo</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-medium">Online</span>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
@@ -149,7 +149,7 @@ function App() {
           </div>
         </div>
 
-        <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto">
           {view === 'home' && (
             <HomePage 
               onOpenManga={handleOpenManga} 

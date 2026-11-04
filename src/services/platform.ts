@@ -1,7 +1,7 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 /**
- * Detecta com 100% de precisão se o app está rodando dentro do APK Android / iOS (Capacitor nativo)
+ * Detecta se o app está rodando dentro do APK Android / iOS (Capacitor nativo)
  */
 export function isCapacitorNative(): boolean {
   if (typeof window === 'undefined') return false;
@@ -11,7 +11,9 @@ export function isCapacitorNative(): boolean {
     if (platform === 'android' || platform === 'ios') return true;
     if (window.location.protocol === 'capacitor:') return true;
     // No APK Android, a WebView do Capacitor serve em https://localhost (sem porta 5173)
-    if (window.location.hostname === 'localhost' && !window.location.port) return true;
+    if (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80' || window.location.port === '443')) {
+      return true;
+    }
   } catch {
     // fallback
   }
@@ -19,8 +21,16 @@ export function isCapacitorNative(): boolean {
 }
 
 /**
+ * Detecta se está rodando no servidor de desenvolvimento Vite (localhost:5173)
+ */
+export function isViteDev(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname === 'localhost' && window.location.port === '5173';
+}
+
+/**
  * Fetch universal que no APK roda via CapacitorHttp (nativo Java, sem CORS nem 403)
- * e no browser dev roda via fetch() normal (com proxy Vite)
+ * para requisições externas (http/https). Para assets locais (/catalog/...), roda via fetch() normal.
  */
 export async function universalFetch(
   url: string,
@@ -28,18 +38,30 @@ export async function universalFetch(
     method?: string;
     headers?: Record<string, string>;
     signal?: AbortSignal;
+    body?: any;
   } = {}
 ): Promise<Response> {
+  // URLs relativas locais (/catalog/...) sempre usam fetch padrão do WebView
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return fetch(url, options as RequestInit);
+  }
+
   if (isCapacitorNative()) {
     try {
-      const res = await CapacitorHttp.get({
-        url,
-        headers: {
-          'User-Agent': 'MangaOffline/1.0 (https://github.com/AlefLorenzo/projeto-leitor)',
-          'Referer': 'https://mangadex.org/',
-          ...(options.headers || {}),
-        },
-      });
+      const method = (options.method || 'GET').toUpperCase();
+      const headers = {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko)',
+        'Referer': 'https://mangadex.org/',
+        'Accept': 'application/json, text/plain, */*',
+        ...(options.headers || {}),
+      };
+
+      let res;
+      if (method === 'POST') {
+        res = await CapacitorHttp.post({ url, headers, data: options.body });
+      } else {
+        res = await CapacitorHttp.get({ url, headers });
+      }
 
       const bodyText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
       return new Response(bodyText, {
@@ -47,8 +69,7 @@ export async function universalFetch(
         headers: new Headers(res.headers as Record<string, string>),
       });
     } catch (nativeErr: any) {
-      // Se falhar no nativo, tenta o fetch padrão como contingência
-      console.warn('[universalFetch] Fallback para fetch:', nativeErr);
+      console.warn('[universalFetch] Fallback nativo para fetch:', nativeErr);
     }
   }
 

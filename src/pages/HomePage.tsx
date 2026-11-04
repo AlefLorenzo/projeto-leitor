@@ -273,7 +273,18 @@ function ContinueReadingCard({ manga, onClick }: { manga: Manga & { progress?: R
     >
       <div className="aspect-[3/2] bg-gradient-to-br from-violet-accent/20 to-graphite-800 relative">
         {manga.coverUrl ? (
-          <img src={manga.coverUrl} alt={manga.title} className="w-full h-full object-cover" />
+          <img
+            src={manga.coverUrl}
+            alt={manga.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.triedGithub && manga.coverUrl?.startsWith('/catalog/')) {
+                target.dataset.triedGithub = 'true';
+                target.src = `https://raw.githubusercontent.com/AlefLorenzo/projeto-leitor/main/public${manga.coverUrl}`;
+              }
+            }}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-2xl opacity-50">📕</span>
@@ -296,7 +307,18 @@ function MangaMiniCard({ manga, onClick }: { manga: Manga; onClick: () => void }
     <button onClick={onClick} className="text-left group">
       <div className="aspect-[2/3] rounded-lg overflow-hidden bg-graphite-800 cover-shadow relative mb-1.5">
         {manga.coverUrl ? (
-          <img src={manga.coverUrl} alt={manga.title} className="w-full h-full object-cover" />
+          <img
+            src={manga.coverUrl}
+            alt={manga.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.triedGithub && manga.coverUrl?.startsWith('/catalog/')) {
+                target.dataset.triedGithub = 'true';
+                target.src = `https://raw.githubusercontent.com/AlefLorenzo/projeto-leitor/main/public${manga.coverUrl}`;
+              }
+            }}
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-violet-accent/20 to-graphite-800 flex items-center justify-center">
             <span className="text-2xl opacity-50">📕</span>

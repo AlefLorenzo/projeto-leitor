@@ -7,7 +7,7 @@ import {
   SourceAvailability,
   SourceFilterOptions,
 } from './types';
-import { isCapacitorNative, universalFetch } from '../platform';
+import { isCapacitorNative, isViteDev, universalFetch } from '../platform';
 
 /**
  * Ordenação natural e inteligente de capítulos
@@ -51,20 +51,18 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
   /**
    * Detecta se o app está rodando como APK nativo (Capacitor).
    */
-  private get isNativeApp(): boolean {
-    return isCapacitorNative();
+  private get isDevServer(): boolean {
+    return isViteDev();
   }
 
   private get apiBase(): string {
-    if (typeof window === 'undefined') return this.baseUrl;   // Node.js (testes)
-    if (this.isNativeApp) return this.baseUrl;                // APK nativo
-    return '/api/mangadex';                                   // Browser dev (proxy Vite)
+    if (this.isDevServer) return '/api/mangadex';
+    return this.baseUrl; // 'https://api.mangadex.org' sempre no APK nativo!
   }
 
   private get coverBase(): string {
-    if (typeof window === 'undefined') return 'https://uploads.mangadex.org/covers';
-    if (this.isNativeApp) return 'https://uploads.mangadex.org/covers';
-    return '/api/mdcovers';
+    if (this.isDevServer) return '/api/mdcovers';
+    return 'https://uploads.mangadex.org/covers'; // Direto no APK nativo!
   }
 
   private coverBaseUrl = 'https://uploads.mangadex.org/covers';
@@ -558,8 +556,8 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
      */
     const resolveImageUrl = (imgHost: string, path: string): string => {
       const fullUrl = `${imgHost}${path}`;
-      if (typeof window === 'undefined') return fullUrl;   // Node.js
-      if (this.isNativeApp) return fullUrl;                // APK — interceptado pelo WebViewClient
+      if (typeof window === 'undefined') return fullUrl; // Node.js
+      if (!this.isDevServer) return fullUrl; // APK nativo e produção usam CDN direta!
       return `/api/mdimg?url=${encodeURIComponent(fullUrl)}`; // Browser dev
     };
 

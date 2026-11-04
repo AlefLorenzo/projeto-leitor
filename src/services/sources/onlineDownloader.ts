@@ -25,12 +25,22 @@ function isNativeApp(): boolean {
 }
 
 /**
- * Converte uma data URL base64 em Blob.
+ * Converte base64 (puro ou data URL) em Blob com segurança total
  */
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, base64] = dataUrl.split(',');
-  const mimeMatch = header.match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+function base64ToBlob(raw: string, defaultMime = 'image/jpeg'): Blob {
+  if (!raw) {
+    throw new Error('Dados de imagem vazios');
+  }
+  let base64 = raw;
+  let mime = defaultMime;
+  if (raw.includes(',')) {
+    const parts = raw.split(',');
+    const match = parts[0].match(/:(.*?);/);
+    if (match) mime = match[1];
+    base64 = parts[1] || '';
+  }
+  // Remove espaços ou quebras de linha do base64 nativo
+  base64 = base64.replace(/[\r\n\s]/g, '');
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -42,10 +52,12 @@ function dataUrlToBlob(dataUrl: string): Blob {
 /**
  * Faz download de uma imagem de forma segura independente do contexto:
  * - APK: usa CapacitorHttp (HTTP nativo Android, sem CORS)
- *        CapacitorHttp com responseType='blob' retorna base64 data URL
  * - Browser dev: usa fetch() (roteado pelo proxy Vite /api/mdimg)
  */
-async function fetchImage(url: string, signal: AbortSignal): Promise<{ blob: Blob; size: number }> {
+async function fetchImage(
+  url: string,
+  signal: AbortSignal
+): Promise<{ blob: Blob; size: number; dataUrl: string }> {
   if (isNativeApp()) {
     // CapacitorHttp faz a requisição via camada nativa — sem restrições CORS
     const { CapacitorHttp } = await import('@capacitor/core');
@@ -53,7 +65,7 @@ async function fetchImage(url: string, signal: AbortSignal): Promise<{ blob: Blo
       url,
       responseType: 'blob',
       headers: {
-        'User-Agent': 'MangaOffline/1.0 (https://github.com/AlefLorenzo/projeto-leitor)',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko)',
         'Referer': 'https://mangadex.org/',
         'Accept': 'image/webp,image/avif,image/*,*/*',
       },
@@ -61,10 +73,18 @@ async function fetchImage(url: string, signal: AbortSignal): Promise<{ blob: Blo
     if (response.status !== 200) {
       throw new Error(`HTTP ${response.status} ao baixar imagem`);
     }
-    // CapacitorHttp com responseType='blob' retorna base64 data URL em response.data
-    const dataUrl = response.data as string;
-    const blob = dataUrlToBlob(dataUrl);
-    return { blob, size: blob.size };
+
+    const rawData = typeof response.data === 'string' ? response.data : '';
+    if (!rawData) {
+      throw new Error('Resposta vazia da CDN do MangaDex');
+    }
+
+    const blob = base64ToBlob(rawData);
+    const dataUrl = rawData.startsWith('data:')
+      ? rawData
+      : `data:${blob.type || 'image/jpeg'};base64,${rawData.replace(/[\r\n\s]/g, '')}`;
+
+    return { blob, size: blob.size, dataUrl };
   }
 
   // Browser (dev): fetch normal, URL já proxificada pelo Vite (/api/mdimg?url=...)
@@ -72,7 +92,8 @@ async function fetchImage(url: string, signal: AbortSignal): Promise<{ blob: Blo
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
-  return { blob, size: blob.size };
+  const dataUrl = await blobToDataUrl(blob);
+  return { blob, size: blob.size, dataUrl };
 }
 
 export interface ChapterDownloadProgress {
@@ -248,6 +269,7 @@ export async function downloadOnlineChapter(
       const targetUrl = preferDataSaver && page.dataSaverUrl ? page.dataSaverUrl : page.imageUrl;
       let blob: Blob | null = null;
       let size = 0;
+      let pageDataUrl = '';
       let attempts = 0;
 
       // Retry controlado em caso de instabilidade na CDN
@@ -257,6 +279,7 @@ export async function downloadOnlineChapter(
           const result = await fetchImage(targetUrl, abortController.signal);
           blob = result.blob;
           size = result.size;
+          pageDataUrl = result.dataUrl;
           break;
         } catch (e: any) {
           if (abortController.signal.aborted) throw new Error('Download cancelado pelo usuário.');
@@ -275,11 +298,13 @@ export async function downloadOnlineChapter(
         throw new Error(`Página ${page.pageNumber} corrompida ou vazia (${size} bytes).`);
       }
 
-      let dataUrl = '';
-      try {
-        dataUrl = await blobToDataUrl(blob);
-      } catch {
-        dataUrl = URL.createObjectURL(blob);
+      let dataUrl = pageDataUrl;
+      if (!dataUrl) {
+        try {
+          dataUrl = await blobToDataUrl(blob);
+        } catch {
+          dataUrl = URL.createObjectURL(blob);
+        }
       }
 
       tempPages.push({

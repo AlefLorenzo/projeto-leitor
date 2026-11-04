@@ -411,6 +411,13 @@ function SourceMangaCard({ manga, onClick }: { manga: SourceManga; onClick: () =
             alt={manga.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.triedCover && manga.coverUrl && target.src !== manga.coverUrl) {
+                target.dataset.triedCover = 'true';
+                target.src = manga.coverUrl;
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-violet-accent/20 to-graphite-900 flex items-center justify-center">

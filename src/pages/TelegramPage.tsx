@@ -330,6 +330,13 @@ function TelegramMangaCard({
             alt={manga.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.triedGithub && manga.coverUrl?.startsWith('/catalog/')) {
+                target.dataset.triedGithub = 'true';
+                target.src = `https://raw.githubusercontent.com/AlefLorenzo/projeto-leitor/main/public${manga.coverUrl}`;
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-violet-accent/20 to-graphite-800 flex items-center justify-center">

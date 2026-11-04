@@ -307,29 +307,36 @@ export function OnlineMangaModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div className="glass-card rounded-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-graphite-700/60 shadow-2xl bg-graphite-950/90 text-graphite-100">
         {/* HEADER MODAL */}
-        <div className="p-4 sm:p-6 border-b border-graphite-700/40 relative flex flex-col sm:flex-row gap-5 items-start bg-graphite-900/40">
+        <div className="p-3 sm:p-6 border-b border-graphite-700/40 relative flex gap-3 sm:gap-5 items-start bg-graphite-900/40">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-graphite-400 hover:text-white p-1.5 rounded-xl hover:bg-graphite-800 transition z-10"
+            className="absolute top-3 right-3 text-graphite-400 hover:text-white p-1.5 rounded-xl hover:bg-graphite-800 transition z-10 text-lg"
             title="Fechar"
           >
             ✕
           </button>
 
-          {/* Capa 512px */}
-          <div className="w-28 sm:w-36 aspect-[2/3] rounded-2xl overflow-hidden bg-graphite-900 flex-shrink-0 border border-graphite-700 shadow-xl relative group">
+          {/* Capa */}
+          <div className="w-20 sm:w-36 aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-graphite-900 flex-shrink-0 border border-graphite-700 shadow-xl relative group">
             {manga.coverUrl || manga.thumbnailUrl ? (
               <img
                 src={manga.coverUrl || manga.thumbnailUrl}
                 alt={manga.title}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.triedThumb && manga.thumbnailUrl && target.src !== manga.thumbnailUrl) {
+                    target.dataset.triedThumb = 'true';
+                    target.src = manga.thumbnailUrl;
+                  }
+                }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-4xl opacity-30">
+              <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl opacity-30">
                 📖
               </div>
             )}
-            <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-md text-[9px] font-bold text-white uppercase">
+            <div className="absolute top-1.5 left-1.5 px-1 py-0.5 rounded bg-black/75 backdrop-blur-md text-[8px] sm:text-[9px] font-bold text-white uppercase">
               {manga.type}
             </div>
           </div>
