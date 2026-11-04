@@ -1,0 +1,17 @@
+{
+  "name": "manga-telegram-bot",
+  "version": "1.0.0",
+  "description": "Cliente Telegram para baixar mangás de canais/grupos",
+  "type": "module",
+  "scripts": {
+    "start": "node client.js",
+    "bot": "node bot.js",
+    "dev": "node --watch client.js"
+  },
+  "dependencies": {
+    "telegram": "^2.22.2",
+    "dotenv": "^16.4.5",
+    "jszip": "^3.10.2",
+    "input": "^1.0.1"
+  }
+}
