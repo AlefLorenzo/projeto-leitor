@@ -1,4 +1,6 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+
+export const APP_USER_AGENT = 'MangaOfflineApp/1.0.0 (Android; https://github.com/AlefLorenzo/projeto-leitor)';
 
 /**
  * Detecta se o app está rodando dentro do APK Android / iOS (Capacitor nativo)
@@ -32,22 +34,19 @@ export function isViteDev(): boolean {
 }
 
 /**
- * Fetch universal de alta resiliência.
+ * Fetch universal de alta resiliência:
  *
- * ARQUITETURA (após análise profunda):
- * ─────────────────────────────────────────────────────────────────────────────
- * CapacitorHttp.enabled = FALSE (desativado no capacitor.config.ts)
+ * - APK Android: Executa via camada nativa Java (CapacitorHttp).
+ *   MOTIVO CRUCIAL: O Cloudflare / DDoS-Guard da API MangaDex bloqueia com HTTP 403
+ *   qualquer requisição que use o User-Agent padrão do Android WebView (Mozilla/5.0).
+ *   O browser fetch() da WebView PROÍBE alterar o User-Agent (é um "forbidden header").
+ *   Ao usar CapacitorHttp na camada Java nativa, enviamos o User-Agent oficial
+ *   MangaOfflineApp/1.0.0 que é autorizado pelo MangaDex com HTTP 200.
  *
- * APK Android (WebView em https://localhost):
- *   - API MangaDex: retorna CORS "Access-Control-Allow-Origin: https://localhost"
- *     ✅ → fetch() nativo da WebView funciona diretamente sem proxy
- *   - Imagens de capa (<img>): tratadas pelo componente NativeImage via CapacitorHttp
- *   - Downloads de capítulos: tratados por onlineDownloader via CapacitorHttp.get()
+ *   Usamos responseType: 'text' para obter o corpo bruto sem dupla conversão JSON.
  *
- * Browser dev (localhost:5173):
- *   - Requests da API → Proxy Vite → /api/mangadex → https://api.mangadex.org
- *   - Imagens → Proxy Vite → /api/mdcovers, /api/mdimg
- * ─────────────────────────────────────────────────────────────────────────────
+ * - Browser dev: Usa fetch() padrão (roteado pelo proxy Vite que adiciona os headers).
+ * - Assets locais (/catalog/...): Usa fetch() padrão do WebView.
  */
 export async function universalFetch(
   url: string,
@@ -58,30 +57,51 @@ export async function universalFetch(
     body?: any;
   } = {}
 ): Promise<Response> {
-  // URLs relativas locais (/catalog/..., /api/...) sempre usam fetch padrão
+  // URLs relativas locais (/catalog/..., /download-progress.json) sempre usam fetch padrão do WebView
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     return fetch(url, options as RequestInit);
   }
 
-  // Monta os headers base com User-Agent correto
-  const baseHeaders: Record<string, string> = {
-    'Accept': 'application/json, text/plain, */*',
-    ...(options.headers || {}),
-  };
-
-  // No APK nativo, adicionar User-Agent e Referer para melhor compatibilidade
+  // APK Android / Capacitor nativo: executa via camada nativa Java
   if (isCapacitorNative()) {
-    baseHeaders['User-Agent'] =
-      'MangaOfflineApp/1.0.0 (Android; https://github.com/AlefLorenzo/projeto-leitor)';
-    baseHeaders['Referer'] = 'https://mangadex.org/';
+    try {
+      const method = (options.method || 'GET').toUpperCase();
+      const headers: Record<string, string> = {
+        'User-Agent': APP_USER_AGENT,
+        'Referer': 'https://mangadex.org/',
+        'Accept': 'application/json, text/plain, */*',
+        ...(options.headers || {}),
+      };
+
+      let res;
+      if (method === 'POST') {
+        res = await CapacitorHttp.post({
+          url,
+          headers,
+          data: options.body,
+          responseType: 'text',
+        });
+      } else {
+        res = await CapacitorHttp.get({
+          url,
+          headers,
+          responseType: 'text',
+        });
+      }
+
+      // Com responseType: 'text', res.data é string pura
+      const bodyText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data ?? '');
+
+      return new Response(bodyText, {
+        status: res.status,
+        headers: new Headers(res.headers as Record<string, string>),
+      });
+    } catch (nativeErr: any) {
+      console.warn('[universalFetch] Erro na requisição nativa CapacitorHttp:', nativeErr);
+      throw new Error(`Falha de rede nativa (${nativeErr.message || 'Sem conexão com a internet'})`);
+    }
   }
 
-  // fetch() nativo — no APK, a WebView faz requisições diretas à API (CORS habilitado pela MangaDex)
-  // No dev, as requests passam pelo proxy do Vite
-  return fetch(url, {
-    method: options.method || 'GET',
-    headers: baseHeaders,
-    signal: options.signal,
-    body: options.body,
-  });
+  // Browser dev (localhost:5173) ou Node.js
+  return fetch(url, options as RequestInit);
 }

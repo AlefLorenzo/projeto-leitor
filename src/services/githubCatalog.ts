@@ -1,4 +1,5 @@
 import { Manga, Chapter, Page } from '../types';
+import { universalFetch } from './platform';
 import { getDB, saveManga, saveChapter, savePages, getManga, getAllMangas, getChaptersByManga } from './database';
 
 export interface RemoteCatalogChapter {
@@ -76,7 +77,7 @@ export async function fetchRemoteCatalog(customUrl?: string): Promise<{ catalog:
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
 
-    const res = await fetch(url + '?t=' + Date.now(), {
+    const res = await universalFetch(url + '?t=' + Date.now(), {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
     });

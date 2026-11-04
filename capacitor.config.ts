@@ -1,10 +1,13 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const APP_USER_AGENT = 'MangaOfflineApp/1.0.0 (Android; https://github.com/AlefLorenzo/projeto-leitor)';
+
 const config: CapacitorConfig = {
   appId: 'com.mangaoffline.app',
   appName: 'Manga Offline',
   webDir: 'dist',
   bundledWebRuntime: false,
+  overrideUserAgent: APP_USER_AGENT,
   server: {
     androidScheme: 'https',
     allowNavigation: ['*'],
@@ -14,6 +17,7 @@ const config: CapacitorConfig = {
     captureInput: true,
     webContentsDebuggingEnabled: true,
     backgroundColor: '#0a0a0f',
+    overrideUserAgent: APP_USER_AGENT,
   },
   plugins: {
     SplashScreen: {
@@ -34,9 +38,8 @@ const config: CapacitorConfig = {
     },
     CapacitorHttp: {
       // DESATIVADO: com enabled=true, o Capacitor patcha o fetch() global
-      // gerando conflito com nosso universalFetch que usa CapacitorHttp.get()
-      // explicitamente. A API MangaDex já retorna CORS para https://localhost,
-      // então o fetch() nativo da WebView funciona diretamente.
+      // causando conflitos. Usamos CapacitorHttp explicitamente no universalFetch
+      // com responseType: 'text' e headers autorizados.
       enabled: false,
     },
   },

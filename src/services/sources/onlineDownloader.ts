@@ -14,7 +14,7 @@ import {
   getDB,
 } from '../database';
 import { onlineSourceManager } from './OnlineSourceManager';
-import { isCapacitorNative } from '../platform';
+import { isCapacitorNative, APP_USER_AGENT } from '../platform';
 
 /**
  * Detecta se está rodando como APK nativo (Capacitor).
@@ -65,7 +65,7 @@ async function fetchImage(
       url,
       responseType: 'blob',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko)',
+        'User-Agent': APP_USER_AGENT,
         'Referer': 'https://mangadex.org/',
         'Accept': 'image/webp,image/avif,image/*,*/*',
       },

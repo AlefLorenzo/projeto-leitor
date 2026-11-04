@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { CapacitorHttp } from '@capacitor/core';
-import { isCapacitorNative } from '../services/platform';
+import { isCapacitorNative, APP_USER_AGENT } from '../services/platform';
 
 interface NativeImageProps {
   src?: string;
@@ -16,10 +16,11 @@ interface NativeImageProps {
  * Componente de imagem que garante o carregamento em APK Android.
  *
  * No APK (WebView em https://localhost):
- *   - <img src="https://uploads.mangadex.org/..."> pode não carregar em alguns
- *     dispositivos Android por causa do carregador nativo da WebView.
+ *   - Servidores de imagens do MangaDex (uploads.mangadex.org) bloqueiam
+ *     requisições com User-Agent 'Mozilla/5.0' com HTTP 403 Forbidden!
  *   - Este componente usa CapacitorHttp.get() para buscar a imagem via camada
- *     Java nativa (sem restrições CORS) e exibir como data URL.
+ *     Java nativa com o User-Agent oficial MangaOfflineApp/1.0.0 (retorna HTTP 200)
+ *     e exibe como data URL base64.
  *
  * No browser dev (localhost:5173):
  *   - Usa a tag <img> padrão normalmente (sem overhead).
@@ -51,14 +52,14 @@ export function NativeImage({
       return;
     }
 
-    // No browser dev ou para data URLs / blob URLs, usar URL direta
+    // No browser dev ou para data URLs / blob URLs / caminhos locais, usar URL direta
     if (!isCapacitorNative() || src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('/')) {
       setDisplaySrc(src);
       setLoading(false);
       return;
     }
 
-    // No APK nativo — buscar via CapacitorHttp para garantir carregamento
+    // No APK nativo — buscar via CapacitorHttp com User-Agent autorizado
     let cancelled = false;
 
     async function fetchNative(url: string): Promise<string | null> {
@@ -67,8 +68,7 @@ export function NativeImage({
           url,
           responseType: 'blob',
           headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            'User-Agent': APP_USER_AGENT,
             'Referer': 'https://mangadex.org/',
             'Accept': 'image/webp,image/avif,image/*,*/*;q=0.8',
           },
@@ -109,7 +109,7 @@ export function NativeImage({
         }
       }
 
-      // Último recurso: URL direta (pode ou não funcionar)
+      // Último recurso: URL direta
       if (!cancelled && isMounted.current) {
         setDisplaySrc(fallbackSrc || src);
         setLoading(false);
@@ -121,7 +121,6 @@ export function NativeImage({
   }, [src, fallbackSrc]);
 
   if (loading && !displaySrc) {
-    // Placeholder de carregamento
     return (
       <div
         className={className}
