@@ -33,6 +33,10 @@ const config: CapacitorConfig = {
       resizeOnFullScreen: true,
     },
     CapacitorHttp: {
+      // DESATIVADO: com enabled=true, o Capacitor patcha o fetch() global
+      // gerando conflito com nosso universalFetch que usa CapacitorHttp.get()
+      // explicitamente. A API MangaDex já retorna CORS para https://localhost,
+      // então o fetch() nativo da WebView funciona diretamente.
       enabled: false,
     },
   },

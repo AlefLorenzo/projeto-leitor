@@ -115,6 +115,25 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
   }
 
   /**
+   * Faz parse seguro de JSON garantindo que respostas HTML (como WAF ou página de erro)
+   * não causem erros crípticos de Unexpected token '<'
+   */
+  private async parseJsonResponse<T>(res: Response, errorContext: string): Promise<T> {
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} ao ${errorContext}`);
+    }
+    const text = await res.text();
+    if (!text || text.trim().startsWith('<')) {
+      throw new Error(`Falha de conexão com a API MangaDex ao ${errorContext} (resposta do servidor não é JSON).`);
+    }
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error(`Resposta inválida da API ao ${errorContext}`);
+    }
+  }
+
+  /**
    * Verifica se a API do MangaDex está disponível
    */
   async isAvailable(): Promise<SourceAvailability> {
@@ -224,8 +243,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
 
     try {
       const res = await this.safeFetch(url, currentSignal);
-      if (!res.ok) throw new Error(`HTTP ${res.status} ao consultar MangaDex`);
-      const data = await res.json();
+      const data = await this.parseJsonResponse<any>(res, 'consultar catálogo');
 
       const mangas: SourceManga[] = (data.data || []).map((item: any) => {
         const attr = item.attributes;
@@ -347,8 +365,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
 
     try {
       const res = await this.safeFetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status} ao carregar detalhes da obra`);
-      const json = await res.json();
+      const json = await this.parseJsonResponse<any>(res, 'carregar detalhes da obra');
       const item = json.data;
       const attr = item.attributes;
 
@@ -464,8 +481,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
         }
 
         const res = await this.safeFetch(`${this.apiBase}/manga/${mangaId}/feed?${params.toString()}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status} ao carregar capítulos`);
-        const data = await res.json();
+        const data = await this.parseJsonResponse<any>(res, 'carregar capítulos');
 
         const items = data.data || [];
         for (const ch of items) {
@@ -535,8 +551,7 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
     const url = `${this.apiBase}/at-home/server/${cleanChapterId}`;
 
     const res = await this.safeFetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status} ao obter servidor de imagens MangaDex`);
-    const json = await res.json();
+    const json = await this.parseJsonResponse<any>(res, 'obter servidor de imagens MangaDex');
 
     const host = json.baseUrl;
     const hash = json.chapter?.hash;

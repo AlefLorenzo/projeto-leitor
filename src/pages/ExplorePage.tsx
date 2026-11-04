@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { SourceManga, SourceAvailability, SourceFilterOptions, MangaSortOrder } from '../services/sources/types';
 import { onlineSourceManager } from '../services/sources/OnlineSourceManager';
 import { OnlineMangaModal } from '../components/OnlineMangaModal';
+import { NativeImage } from '../components/NativeImage';
 
 interface ExplorePageProps {
   onOpenCatalogManga?: (id: string) => void;
@@ -406,18 +407,11 @@ function SourceMangaCard({ manga, onClick }: { manga: SourceManga; onClick: () =
     >
       <div className="w-full aspect-[2/3] rounded-2xl overflow-hidden bg-graphite-900 relative mb-2 border border-graphite-700/50 group-hover:border-violet-accent transition-all shadow-lg group-hover:shadow-violet-accent/20">
         {manga.thumbnailUrl || manga.coverUrl ? (
-          <img
+          <NativeImage
             src={manga.thumbnailUrl || manga.coverUrl}
+            fallbackSrc={manga.coverUrl}
             alt={manga.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (!target.dataset.triedCover && manga.coverUrl && target.src !== manga.coverUrl) {
-                target.dataset.triedCover = 'true';
-                target.src = manga.coverUrl;
-              }
-            }}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-violet-accent/20 to-graphite-900 flex items-center justify-center">

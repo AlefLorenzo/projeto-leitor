@@ -11,6 +11,7 @@ import {
   DEFAULT_GITHUB_CONFIG,
 } from '../services/githubCatalog';
 import { ChapterDownloadModal } from '../components/ChapterDownloadModal';
+import { NativeImage } from '../components/NativeImage';
 
 interface TelegramPageProps {
   onOpenManga: (id: string) => void;

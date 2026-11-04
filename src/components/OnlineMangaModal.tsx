@@ -14,6 +14,7 @@ import {
   BatchDownloadProgress,
 } from '../services/sources/onlineDownloader';
 import { getManga, saveManga } from '../services/database';
+import { NativeImage } from './NativeImage';
 
 interface OnlineMangaModalProps {
   isOpen: boolean;
@@ -319,17 +320,11 @@ export function OnlineMangaModal({
           {/* Capa */}
           <div className="w-20 sm:w-36 aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-graphite-900 flex-shrink-0 border border-graphite-700 shadow-xl relative group">
             {manga.coverUrl || manga.thumbnailUrl ? (
-              <img
+              <NativeImage
                 src={manga.coverUrl || manga.thumbnailUrl}
+                fallbackSrc={manga.thumbnailUrl}
                 alt={manga.title}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  if (!target.dataset.triedThumb && manga.thumbnailUrl && target.src !== manga.thumbnailUrl) {
-                    target.dataset.triedThumb = 'true';
-                    target.src = manga.thumbnailUrl;
-                  }
-                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl opacity-30">
