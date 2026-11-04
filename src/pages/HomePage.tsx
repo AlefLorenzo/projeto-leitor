@@ -131,22 +131,22 @@ export default function HomePage({
           <p className="text-xs sm:text-sm text-graphite-400 mb-6 max-w-md mx-auto">
             Escolha uma obra no <b>Catálogo Git</b> ou no <b>MangaDex</b> para baixar capítulos e ler mesmo sem internet. Você também pode importar seus próprios arquivos CBZ/ZIP.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2.5 sm:gap-3 w-full">
             <button
               onClick={onOpenTelegram}
-              className="px-5 py-2.5 bg-violet-accent hover:bg-violet-dark text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-md shadow-violet-accent/20"
+              className="w-full sm:w-auto px-5 py-2.5 bg-violet-accent hover:bg-violet-dark text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-md shadow-violet-accent/20 text-center"
             >
               🌐 Ver Obras no Git
             </button>
             <button
               onClick={onOpenExplore}
-              className="px-5 py-2.5 bg-graphite-800 hover:bg-graphite-700 text-white border border-graphite-600/50 rounded-xl text-xs sm:text-sm font-semibold transition-all"
+              className="w-full sm:w-auto px-5 py-2.5 bg-graphite-800 hover:bg-graphite-700 text-white border border-graphite-600/50 rounded-xl text-xs sm:text-sm font-semibold transition-all text-center"
             >
               📙 Pesquisar no MangaDex
             </button>
             <button
               onClick={onImport}
-              className="px-5 py-2.5 bg-graphite-800/60 hover:bg-graphite-700 text-graphite-300 rounded-xl text-xs sm:text-sm font-medium transition-all"
+              className="w-full sm:w-auto px-5 py-2.5 bg-graphite-800/60 hover:bg-graphite-700 text-graphite-300 rounded-xl text-xs sm:text-sm font-medium transition-all text-center"
             >
               📂 Importar CBZ / ZIP
             </button>
@@ -210,38 +210,38 @@ export default function HomePage({
       {mangas.length > 0 && (
         <section>
           <h2 className="text-base sm:text-lg font-semibold text-graphite-100 mb-4">⚡ Ações Rápidas</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
             <button
               onClick={onOpenTelegram}
-              className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
+              className="glass-card rounded-xl p-3 sm:p-4 text-left hover:border-violet-accent/30 transition-all min-w-0"
             >
-              <span className="text-2xl mb-2 block">🌐</span>
-              <h3 className="text-sm font-medium text-graphite-200">Catálogo Git</h3>
-              <p className="text-xs text-graphite-500 mt-1">Baixar obras</p>
+              <span className="text-xl sm:text-2xl mb-1.5 sm:mb-2 block">🌐</span>
+              <h3 className="text-xs sm:text-sm font-medium text-graphite-200 truncate">Catálogo Git</h3>
+              <p className="text-[10px] sm:text-xs text-graphite-500 mt-0.5 truncate">Baixar obras</p>
             </button>
             <button
               onClick={onOpenExplore}
-              className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
+              className="glass-card rounded-xl p-3 sm:p-4 text-left hover:border-violet-accent/30 transition-all min-w-0"
             >
-              <span className="text-2xl mb-2 block">📙</span>
-              <h3 className="text-sm font-medium text-graphite-200">MangaDex</h3>
-              <p className="text-xs text-graphite-500 mt-1">9.500+ títulos</p>
+              <span className="text-xl sm:text-2xl mb-1.5 sm:mb-2 block">📙</span>
+              <h3 className="text-xs sm:text-sm font-medium text-graphite-200 truncate">MangaDex</h3>
+              <p className="text-[10px] sm:text-xs text-graphite-500 mt-0.5 truncate">9.500+ títulos</p>
             </button>
             <button
               onClick={onImport}
-              className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
+              className="glass-card rounded-xl p-3 sm:p-4 text-left hover:border-violet-accent/30 transition-all min-w-0"
             >
-              <span className="text-2xl mb-2 block">📂</span>
-              <h3 className="text-sm font-medium text-graphite-200">Importar</h3>
-              <p className="text-xs text-graphite-500 mt-1">Adicionar CBZ/ZIP</p>
+              <span className="text-xl sm:text-2xl mb-1.5 sm:mb-2 block">📂</span>
+              <h3 className="text-xs sm:text-sm font-medium text-graphite-200 truncate">Importar</h3>
+              <p className="text-[10px] sm:text-xs text-graphite-500 mt-0.5 truncate">Adicionar CBZ/ZIP</p>
             </button>
             <button
               onClick={() => onOpenManga(mangas[0]?.id || '')}
-              className="glass-card rounded-xl p-4 text-left hover:border-violet-accent/30 transition-all"
+              className="glass-card rounded-xl p-3 sm:p-4 text-left hover:border-violet-accent/30 transition-all min-w-0"
             >
-              <span className="text-2xl mb-2 block">📖</span>
-              <h3 className="text-sm font-medium text-graphite-200">Ler Agora</h3>
-              <p className="text-xs text-graphite-500 mt-1">Continuar leitura</p>
+              <span className="text-xl sm:text-2xl mb-1.5 sm:mb-2 block">📖</span>
+              <h3 className="text-xs sm:text-sm font-medium text-graphite-200 truncate">Ler Agora</h3>
+              <p className="text-[10px] sm:text-xs text-graphite-500 mt-0.5 truncate">Continuar leitura</p>
             </button>
           </div>
         </section>
@@ -252,10 +252,10 @@ export default function HomePage({
 
 function StatCard({ icon, value, label }: { icon: string; value: string | number; label: string }) {
   return (
-    <div className="glass-card rounded-xl p-3 text-center">
-      <span className="text-xl mb-1 block">{icon}</span>
-      <p className="text-lg font-bold text-graphite-100">{value}</p>
-      <p className="text-[10px] text-graphite-500">{label}</p>
+    <div className="glass-card rounded-xl p-2.5 sm:p-3 text-center min-w-0">
+      <span className="text-lg sm:text-xl mb-0.5 sm:mb-1 block">{icon}</span>
+      <p className="text-base sm:text-lg font-bold text-graphite-100 truncate">{value}</p>
+      <p className="text-[10px] text-graphite-500 truncate">{label}</p>
     </div>
   );
 }
@@ -269,7 +269,7 @@ function ContinueReadingCard({ manga, onClick }: { manga: Manga & { progress?: R
   return (
     <button
       onClick={onClick}
-      className="flex-shrink-0 w-36 sm:w-40 glass-card rounded-xl overflow-hidden hover:border-violet-accent/30 transition-all text-left"
+      className="flex-shrink-0 w-32 sm:w-40 glass-card rounded-xl overflow-hidden hover:border-violet-accent/30 transition-all text-left min-w-0"
     >
       <div className="aspect-[3/2] bg-gradient-to-br from-violet-accent/20 to-graphite-800 relative">
         {manga.coverUrl ? (
@@ -304,7 +304,7 @@ function ContinueReadingCard({ manga, onClick }: { manga: Manga & { progress?: R
 
 function MangaMiniCard({ manga, onClick }: { manga: Manga; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="text-left group">
+    <button onClick={onClick} className="text-left group min-w-0 w-full">
       <div className="aspect-[2/3] rounded-lg overflow-hidden bg-graphite-800 cover-shadow relative mb-1.5">
         {manga.coverUrl ? (
           <img

@@ -182,7 +182,7 @@ export default function ImportPage({ onComplete, onCancel }: ImportPageProps) {
       </div>
 
       {/* Progress Steps */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center gap-2 mb-6 sm:mb-8 overflow-x-auto pb-2">
         {['type', 'files', 'info', 'chapters', 'review'].map((s, i) => (
           <div key={s} className="flex items-center gap-2 flex-1">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${

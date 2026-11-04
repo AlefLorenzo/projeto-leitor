@@ -305,8 +305,8 @@ export function OnlineMangaModal({
   const estimatedMb = (estimateBatchSize(selectedCount > 0 ? selectedChaptersList : pendingChapters) / (1024 * 1024)).toFixed(1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div className="glass-card rounded-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-graphite-700/60 shadow-2xl bg-graphite-950/90 text-graphite-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn">
+      <div className="glass-card rounded-2xl w-full max-w-4xl max-h-[96vh] sm:max-h-[94vh] flex flex-col overflow-hidden border border-graphite-700/60 shadow-2xl bg-graphite-950/90 text-graphite-100">
         {/* HEADER MODAL */}
         <div className="p-3 sm:p-6 border-b border-graphite-700/40 relative flex gap-3 sm:gap-5 items-start bg-graphite-900/40">
           <button
@@ -366,7 +366,7 @@ export function OnlineMangaModal({
               )}
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black text-white leading-tight mb-1">
+            <h2 className="text-lg sm:text-2xl font-black text-white leading-tight mb-1 break-words">
               {manga.title}
             </h2>
 
@@ -453,7 +453,7 @@ export function OnlineMangaModal({
 
         {/* BARRA DE PROGRESSO DO LOTE ATIVO */}
         {isBatchDownloading && batchProgress && (
-          <div className="bg-graphite-900 border-b border-violet-accent/40 px-4 py-3 flex items-center justify-between gap-4 animate-slideDown">
+          <div className="bg-graphite-900 border-b border-violet-accent/40 px-3 sm:px-4 py-2.5 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4 animate-slideDown">
             <div className="flex-1">
               <div className="flex justify-between text-xs mb-1">
                 <span className="font-bold text-violet-light">
@@ -478,7 +478,7 @@ export function OnlineMangaModal({
         )}
 
         {/* BARRA DE CONTROLE DE CAPÍTULOS E DOWNLOAD SELETIVO */}
-        <div className="p-3 sm:px-6 bg-graphite-900/60 border-b border-graphite-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="p-3 sm:px-6 bg-graphite-900/60 border-b border-graphite-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 text-xs">
           {/* Estatística de Capítulos */}
           <div className="flex items-center gap-3">
             <span className="text-graphite-300 font-semibold">
@@ -523,7 +523,7 @@ export function OnlineMangaModal({
 
         {/* Seletor de Intervalo Expansível */}
         {showRangeSelector && (
-          <div className="px-6 py-2.5 bg-graphite-900 border-b border-graphite-800 flex items-center gap-3 text-xs animate-slideDown">
+          <div className="px-3 sm:px-6 py-2.5 bg-graphite-900 border-b border-graphite-800 flex flex-wrap items-center gap-2 sm:gap-3 text-xs animate-slideDown">
             <span className="text-graphite-300 font-semibold">Selecionar capítulos do:</span>
             <input
               type="number"
@@ -765,9 +765,7 @@ export function OnlineMangaModal({
 
         {/* FOOTER MODAL */}
         <div className="p-3.5 sm:px-6 bg-graphite-900 border-t border-graphite-800 flex items-center justify-between text-xs text-graphite-400">
-          <span>
-            {manga.title} • Fonte: <b>MangaDex API Oficial</b>
-          </span>
+          <span className="truncate flex-1 min-w-0 mr-2">{manga.title} • Fonte: <b>MangaDex API Oficial</b></span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-graphite-800 hover:bg-graphite-700 text-white rounded-lg font-semibold transition"

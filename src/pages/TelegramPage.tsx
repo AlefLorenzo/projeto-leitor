@@ -165,7 +165,7 @@ export default function TelegramPage({ onOpenManga, onOpenReader }: TelegramPage
         <button
           onClick={handleImportAllWithChapters}
           disabled={!!importAllStatus}
-          className="self-start sm:self-auto px-4 py-2 bg-gradient-to-r from-violet-accent to-violet-dark hover:brightness-110 text-white rounded-lg text-xs font-semibold shadow-lg shadow-violet-accent/20 transition-all flex items-center gap-2 disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2 text-center justify-center bg-gradient-to-r from-violet-accent to-violet-dark hover:brightness-110 text-white rounded-lg text-xs font-semibold shadow-lg shadow-violet-accent/20 transition-all flex items-center gap-2 disabled:opacity-50"
         >
           <span>⚡</span>
           <span>{importAllStatus || `Importar Todas com Capítulos (${totalWithChapters})`}</span>
@@ -203,7 +203,7 @@ export default function TelegramPage({ onOpenManga, onOpenReader }: TelegramPage
             />
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-graphite-400 mt-2 font-mono">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-[10px] text-graphite-400 mt-2 font-mono">
             <span>⚡ Modo acelerado (pacotes de 512KB) • Salvo direto no PC</span>
             <span>Progresso da Obra: <b className="text-violet-light">{liveProgress.mangaPercent || 0}%</b></span>
           </div>
@@ -235,7 +235,7 @@ export default function TelegramPage({ onOpenManga, onOpenReader }: TelegramPage
       )}
 
       {/* Search & Filters */}
-      <div className="glass-card rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-3 items-center">
+      <div className="glass-card rounded-xl p-3 sm:p-4 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="relative flex-1 w-full">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-graphite-500">🔍</span>
           <input
@@ -249,7 +249,7 @@ export default function TelegramPage({ onOpenManga, onOpenReader }: TelegramPage
 
         <button
           onClick={() => setFilterWithChapters(!filterWithChapters)}
-          className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all whitespace-nowrap ${
+          className={`w-full sm:w-auto px-3 py-2 rounded-lg text-xs font-medium border transition-all whitespace-nowrap text-center ${
             filterWithChapters
               ? 'bg-violet-accent/20 border-violet-accent text-violet-light'
               : 'bg-graphite-800/40 border-graphite-700/40 text-graphite-400 hover:text-graphite-200'
@@ -270,7 +270,7 @@ export default function TelegramPage({ onOpenManga, onOpenReader }: TelegramPage
 
       {/* Mangas Grid */}
       {filteredMangas.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
           {filteredMangas.map((manga) => (
             <TelegramMangaCard
               key={manga.id}
@@ -322,7 +322,7 @@ function TelegramMangaCard({
     <button
       onClick={onClick}
       disabled={isImporting}
-      className="text-left group flex flex-col focus:outline-none transition-transform hover:-translate-y-1"
+      className="text-left group flex flex-col focus:outline-none transition-transform hover:-translate-y-1 min-w-0 w-full"
     >
       <div className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-graphite-800 cover-shadow relative mb-1.5 border border-graphite-700/20 group-hover:border-violet-accent/50 transition-colors">
         {manga.coverUrl ? (

@@ -130,7 +130,7 @@ export default function SettingsPage() {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={handleReloadDemo}
             disabled={reloading}
@@ -271,14 +271,14 @@ function ToggleSetting({ label, description, value, onChange }: {
   label: string; description: string; value: boolean; onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <div>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex-1 min-w-0 pr-2">
         <p className="text-xs font-medium text-graphite-200">{label}</p>
         <p className="text-[10px] text-graphite-500">{description}</p>
       </div>
       <button
         onClick={() => onChange(!value)}
-        className={`w-10 h-5 rounded-full transition-colors relative ${value ? 'bg-violet-accent' : 'bg-graphite-700'}`}
+        className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${value ? 'bg-violet-accent' : 'bg-graphite-700'}`}
       >
         <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${value ? 'left-5.5' : 'left-0.5'}`}></div>
       </button>

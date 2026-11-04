@@ -57,7 +57,7 @@ export default function LibraryPage({ onOpenManga, onImport }: LibraryPageProps)
   return (
     <div className="slide-up">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-graphite-100">Biblioteca</h1>
           <p className="text-sm text-graphite-400">{stats.totalMangas} obras • {stats.totalChapters} capítulos • {formatFileSize(stats.totalSize)}</p>
@@ -157,7 +157,7 @@ export default function LibraryPage({ onOpenManga, onImport }: LibraryPageProps)
 
       {/* Grid View */}
       {viewMode === 'grid' && filtered.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
           {filtered.map((manga) => (
             <MangaGridCard
               key={manga.id}
@@ -243,7 +243,7 @@ function MangaGridCard({ manga, onClick, onContextMenu, onToggleFavorite }: {
 
   return (
     <div
-      className="group relative cursor-pointer"
+      className="group relative cursor-pointer min-w-0 w-full"
       onClick={onClick}
       onContextMenu={onContextMenu}
     >

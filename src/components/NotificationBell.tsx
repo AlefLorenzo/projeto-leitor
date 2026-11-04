@@ -68,7 +68,7 @@ export function NotificationBell() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 glass-card rounded-xl shadow-2xl z-50 fade-in overflow-hidden">
+          <div className="absolute right-0 top-full mt-2 w-[calc(100vw-24px)] max-w-xs sm:w-80 glass-card rounded-xl shadow-2xl z-50 fade-in overflow-hidden">
             <div className="p-3 border-b border-graphite-700/30 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-graphite-100">Notificações</h3>
               <div className="flex gap-2">

@@ -41,7 +41,7 @@ export default function DownloadsPage() {
 
   return (
     <div className="slide-up">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-graphite-100">Downloads</h1>
           <p className="text-sm text-graphite-400">{downloads.length} tarefas</p>
@@ -162,7 +162,7 @@ function DownloadCard({ task, onPause, onResume, onCancel, onRetry, onRemove }: 
           )}
 
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {task.status === 'downloading' && (
               <button onClick={onPause} className="text-xs text-graphite-400 hover:text-graphite-200 px-2 py-1 bg-graphite-800/40 rounded">
                 ⏸️ Pausar

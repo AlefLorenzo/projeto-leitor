@@ -132,9 +132,9 @@ function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
+      <main className="flex-1 overflow-y-auto pb-28 md:pb-6">
         {/* Top Bar */}
-        <div className="sticky top-0 z-30 bg-graphite-950/85 backdrop-blur-md border-b border-graphite-700/30 px-3 sm:px-6 py-2.5">
+        <div className="sticky top-0 z-30 bg-graphite-950/85 backdrop-blur-md border-b border-graphite-700/30 px-3 sm:px-6 py-2.5 safe-area-top">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-accent to-violet-dark flex items-center justify-center md:hidden">
@@ -143,13 +143,21 @@ function App() {
               <span className="text-sm font-semibold text-graphite-100">Manga Offline</span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-medium">Online</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                onClick={() => navigateTo('settings')}
+                className={`p-2 rounded-lg transition-colors md:hidden ${activeTab === 'settings' ? 'text-violet-light bg-violet-accent/15' : 'text-graphite-400 hover:text-white'}`}
+                title="Configurações"
+                aria-label="Configurações"
+              >
+                <span className="text-base">⚙️</span>
+              </button>
               <NotificationBell />
             </div>
           </div>
         </div>
 
-        <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           {view === 'home' && (
             <HomePage 
               onOpenManga={handleOpenManga} 
@@ -253,14 +261,14 @@ function BottomNavItem({ icon, label, active, onClick }: { icon: string; label: 
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg transition-all ${
+      className={`flex flex-col items-center justify-center py-1 px-1 sm:px-2 rounded-lg transition-all flex-1 min-w-0 ${
         active
           ? 'text-violet-light font-semibold scale-105'
           : 'text-graphite-400 hover:text-graphite-200 opacity-80'
       }`}
     >
-      <span className="text-xl mb-0.5">{icon}</span>
-      <span className="text-[10px] tracking-tight">{label}</span>
+      <span className="text-lg sm:text-xl mb-0.5">{icon}</span>
+      <span className="text-[9px] sm:text-[10px] tracking-tight truncate max-w-full text-center">{label}</span>
       {active && <span className="w-1.5 h-1.5 rounded-full bg-violet-accent mt-0.5"></span>}
     </button>
   );

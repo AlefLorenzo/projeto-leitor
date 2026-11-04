@@ -82,7 +82,7 @@ export default function FileManagerPage({ mangaId, mangaTitle, onBack }: FileMan
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
         <div className="glass-card rounded-xl p-4 text-center">
           <p className="text-lg font-bold text-violet-light">{fileInfo.chaptersCount}</p>
           <p className="text-xs text-graphite-500">Capítulos</p>
@@ -108,7 +108,7 @@ export default function FileManagerPage({ mangaId, mangaTitle, onBack }: FileMan
         <h3 className="text-sm font-semibold text-graphite-100 mb-2 flex items-center gap-2">
           <span>📁</span> Localização
         </h3>
-        <p className="text-xs text-graphite-400 font-mono bg-graphite-900/50 p-2 rounded">
+        <p className="text-xs text-graphite-400 font-mono bg-graphite-900/50 p-2 rounded break-all">
           {fileInfo.storageLocation}
         </p>
       </div>

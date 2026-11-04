@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ReadingStats } from '../types';
 import { calculateStats, formatReadTime } from '../services/statistics';
-import { formatFileSize } from '../services/import';
 
 export default function StatisticsPage() {
   const [stats, setStats] = useState<ReadingStats | null>(null);
@@ -35,7 +34,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* Main Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
         <StatCard icon="📚" value={stats.totalMangas} label="Obras na biblioteca" />
         <StatCard icon="📖" value={stats.totalChapters} label="Capítulos" />
         <StatCard icon="🖼️" value={stats.totalPages} label="Páginas totais" />
@@ -43,7 +42,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* Reading Progress */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <div className="glass-card rounded-xl p-5">
           <h3 className="text-xs text-graphite-400 uppercase tracking-wider mb-2">Páginas Lidas</h3>
           <p className="text-3xl font-bold text-violet-light">{stats.totalPagesRead}</p>
@@ -62,42 +61,46 @@ export default function StatisticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Reading by Day */}
         <div className="glass-card rounded-xl p-5">
           <h3 className="text-sm font-semibold text-graphite-100 mb-4">📊 Leitura por Dia da Semana</h3>
-          <div className="flex items-end gap-2 h-32">
-            {stats.readingByDay.map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full bg-graphite-800 rounded-t relative" style={{ height: '100%' }}>
-                  <div
-                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-violet-accent to-violet-light rounded-t transition-all"
-                    style={{ height: `${(d.count / maxDayCount) * 100}%`, minHeight: d.count > 0 ? '4px' : '0' }}
-                  ></div>
+          <div className="overflow-x-auto pb-1">
+            <div className="flex items-end gap-2 h-32 min-w-[260px]">
+              {stats.readingByDay.map((d, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full bg-graphite-800 rounded-t relative" style={{ height: '100%' }}>
+                    <div
+                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-violet-accent to-violet-light rounded-t transition-all"
+                      style={{ height: `${(d.count / maxDayCount) * 100}%`, minHeight: d.count > 0 ? '4px' : '0' }}
+                    ></div>
+                  </div>
+                  <span className="text-[10px] text-graphite-500">{d.day}</span>
+                  <span className="text-[10px] text-graphite-400">{d.count}</span>
                 </div>
-                <span className="text-[10px] text-graphite-500">{d.day}</span>
-                <span className="text-[10px] text-graphite-400">{d.count}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Monthly Activity */}
         <div className="glass-card rounded-xl p-5">
           <h3 className="text-sm font-semibold text-graphite-100 mb-4">📈 Atividade Mensal</h3>
-          <div className="flex items-end gap-2 h-32">
-            {stats.monthlyActivity.map((m, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full bg-graphite-800 rounded-t relative" style={{ height: '100%' }}>
-                  <div
-                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-violet-dark to-violet-accent rounded-t transition-all"
-                    style={{ height: `${(m.pages / maxMonthPages) * 100}%`, minHeight: m.pages > 0 ? '4px' : '0' }}
-                  ></div>
+          <div className="overflow-x-auto pb-1">
+            <div className="flex items-end gap-2 h-32 min-w-[260px]">
+              {stats.monthlyActivity.map((m, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full bg-graphite-800 rounded-t relative" style={{ height: '100%' }}>
+                    <div
+                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-violet-dark to-violet-accent rounded-t transition-all"
+                      style={{ height: `${(m.pages / maxMonthPages) * 100}%`, minHeight: m.pages > 0 ? '4px' : '0' }}
+                    ></div>
+                  </div>
+                  <span className="text-[10px] text-graphite-500">{m.month}</span>
+                  <span className="text-[10px] text-graphite-400">{m.pages}</span>
                 </div>
-                <span className="text-[10px] text-graphite-500">{m.month}</span>
-                <span className="text-[10px] text-graphite-400">{m.pages}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>

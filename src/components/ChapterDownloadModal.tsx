@@ -93,8 +93,8 @@ export function ChapterDownloadModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-2xl bg-graphite-900 border border-graphite-700/60 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-2xl bg-graphite-900 border border-graphite-700/60 rounded-2xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-graphite-800 flex items-start gap-3 bg-gradient-to-r from-graphite-900 via-graphite-850 to-graphite-900">
           <div className="w-16 h-22 sm:w-20 sm:h-28 rounded-lg overflow-hidden bg-graphite-800 flex-shrink-0 shadow border border-graphite-700/40">
@@ -161,7 +161,7 @@ export function ChapterDownloadModal({
             <button
               onClick={handleDownloadAll}
               disabled={isDownloadingAll}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-violet-accent to-indigo-600 hover:brightness-110 text-white shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+              className="w-full sm:w-auto px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-violet-accent to-indigo-600 hover:brightness-110 text-white shadow-md transition disabled:opacity-50 flex items-center justify-center gap-1.5 text-center"
             >
               <span>{isDownloadingAll ? '⏳' : '⬇️'}</span>
               <span>{isDownloadingAll ? 'Baixando Tudo...' : `Baixar Todos (${totalPending})`}</span>
@@ -268,7 +268,7 @@ export function ChapterDownloadModal({
 
         {/* Footer info */}
         <div className="px-4 py-2.5 bg-graphite-900 border-t border-graphite-800 text-[11px] text-graphite-400 flex items-center justify-between">
-          <span>🚀 Arquivos baixados diretamente do GitHub • 100% Offline</span>
+          <span className="truncate flex-1 min-w-0 mr-2">🚀 Arquivos baixados diretamente do GitHub • 100% Offline</span>
           <button onClick={onClose} className="text-violet-light hover:underline font-medium">
             Fechar
           </button>

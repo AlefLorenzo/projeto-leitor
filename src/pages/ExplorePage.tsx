@@ -246,19 +246,19 @@ export default function ExplorePage({ onOpenReader }: ExplorePageProps) {
 
         {/* Filtros Secundários: Idioma e Status */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-graphite-700/30 text-xs text-graphite-400">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">
             {/* Idioma */}
-            <div className="flex items-center gap-1.5">
-              <span>Traduções:</span>
+            <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+              <span className="flex-shrink-0">Traduções:</span>
               <select
                 value={selectedLanguage}
                 onChange={(e) => {
                   setSelectedLanguage(e.target.value);
                   setPage(1);
                 }}
-                className="bg-graphite-800 border border-graphite-700/60 rounded-lg px-2 py-1 text-xs text-graphite-200 focus:outline-none focus:border-violet-accent"
+                className="bg-graphite-800 border border-graphite-700/60 rounded-lg px-2 py-1 text-xs text-graphite-200 focus:outline-none focus:border-violet-accent max-w-full"
               >
-                <option value="pt-br">🇧🇷 Português (PT-BR prioritário)</option>
+                <option value="pt-br">🇧🇷 Português (PT-BR)</option>
                 <option value="all">🌐 Todos os idiomas</option>
                 <option value="en">🇺🇸 Inglês (EN)</option>
                 <option value="es">🇪🇸 Espanhol (ES)</option>
@@ -266,15 +266,15 @@ export default function ExplorePage({ onOpenReader }: ExplorePageProps) {
             </div>
 
             {/* Status */}
-            <div className="flex items-center gap-1.5">
-              <span>Status:</span>
+            <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+              <span className="flex-shrink-0">Status:</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => {
                   setSelectedStatus(e.target.value as any);
                   setPage(1);
                 }}
-                className="bg-graphite-800 border border-graphite-700/60 rounded-lg px-2 py-1 text-xs text-graphite-200 focus:outline-none focus:border-violet-accent"
+                className="bg-graphite-800 border border-graphite-700/60 rounded-lg px-2 py-1 text-xs text-graphite-200 focus:outline-none focus:border-violet-accent max-w-full"
               >
                 <option value="all">Todos os status</option>
                 <option value="ongoing">Em andamento</option>
@@ -342,7 +342,7 @@ export default function ExplorePage({ onOpenReader }: ExplorePageProps) {
           </div>
 
           {/* Grid de Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4 mb-8">
             {mangas.map((manga) => (
               <SourceMangaCard
                 key={manga.id}
@@ -353,7 +353,7 @@ export default function ExplorePage({ onOpenReader }: ExplorePageProps) {
           </div>
 
           {/* Paginação */}
-          <div className="flex items-center justify-center gap-3 py-6 border-t border-graphite-800/80">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 py-6 border-t border-graphite-800/80">
             <button
               onClick={() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -403,7 +403,7 @@ function SourceMangaCard({ manga, onClick }: { manga: SourceManga; onClick: () =
   return (
     <button
       onClick={onClick}
-      className="text-left group flex flex-col focus:outline-none transition-transform hover:-translate-y-1.5"
+      className="text-left group flex flex-col focus:outline-none transition-transform hover:-translate-y-1.5 min-w-0 w-full"
     >
       <div className="w-full aspect-[2/3] rounded-2xl overflow-hidden bg-graphite-900 relative mb-2 border border-graphite-700/50 group-hover:border-violet-accent transition-all shadow-lg group-hover:shadow-violet-accent/20">
         {manga.thumbnailUrl || manga.coverUrl ? (

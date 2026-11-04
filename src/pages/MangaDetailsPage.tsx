@@ -169,9 +169,9 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
 
       {/* Header with cover */}
       <div className="glass-card rounded-xl overflow-hidden mb-6">
-        <div className="flex flex-col md:flex-row gap-6 p-6">
+        <div className="flex flex-col md:flex-row gap-4 sm:gap-6 p-4 sm:p-6">
           {/* Cover */}
-          <div className="w-40 h-56 rounded-lg overflow-hidden bg-graphite-800 flex-shrink-0 cover-shadow mx-auto md:mx-0 relative group">
+          <div className="w-36 h-52 sm:w-40 sm:h-56 rounded-lg overflow-hidden bg-graphite-800 flex-shrink-0 cover-shadow mx-auto md:mx-0 relative group">
             {manga.coverUrl ? (
               <img src={manga.coverUrl} alt={manga.title} className="w-full h-full object-cover" />
             ) : (
@@ -185,7 +185,7 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4 mb-2">
               <div>
-                <h1 className="text-2xl font-bold text-graphite-100 mb-1">{manga.title}</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-graphite-100 mb-1 break-words">{manga.title}</h1>
                 {manga.author && <p className="text-sm text-graphite-400">por {manga.author}</p>}
               </div>
               <button
@@ -207,25 +207,24 @@ export default function MangaDetailsPage({ mangaId, onBack, onRead, onRefresh, o
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-5 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mb-4">
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-graphite-100">{totalCount}</p>
+                <p className="text-base sm:text-lg font-bold text-graphite-100 truncate">{totalCount}</p>
                 <p className="text-[10px] text-graphite-500">Total</p>
               </div>
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-graphite-400">{unreadCount}</p>
+                <p className="text-base sm:text-lg font-bold text-graphite-400 truncate">{unreadCount}</p>
                 <p className="text-[10px] text-graphite-500">Não lidos</p>
               </div>
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-violet-light">{inProgressCount}</p>
+                <p className="text-base sm:text-lg font-bold text-violet-light truncate">{inProgressCount}</p>
                 <p className="text-[10px] text-graphite-500">Em andamento</p>
               </div>
               <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-success">{completedCount}</p>
+                <p className="text-base sm:text-lg font-bold text-success truncate">{completedCount}</p>
                 <p className="text-[10px] text-graphite-500">Concluídos</p>
               </div>
-              <div className="bg-graphite-800/40 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-graphite-100">{formatFileSize(manga.storageSize)}</p>
+              <div className="bg-graphite-800/40 rounded-lg p-2 text-center col-span-2 sm:col-span-1">`r`n                <p className="text-base sm:text-base sm:text-lg font-bold text-graphite-100 truncate truncate">{formatFileSize(manga.storageSize)}</p>
                 <p className="text-[10px] text-graphite-500">Tamanho</p>
               </div>
             </div>

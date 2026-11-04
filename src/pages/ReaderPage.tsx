@@ -491,14 +491,14 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ filter: `brightness(${brightness}%)` }}>
       {/* Top Bar */}
       <div className={`absolute top-0 left-0 right-0 z-20 transition-all duration-300 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}`}>
-        <div className="bg-gradient-to-b from-black/95 via-black/80 to-transparent px-4 py-3">
+        <div className="bg-gradient-to-b from-black/95 via-black/80 to-transparent px-3 sm:px-4 py-2 sm:py-3 safe-area-top">
           <div className="flex items-center justify-between">
             <button onClick={handleExit} className="text-white/80 hover:text-white text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-white/10">
               ← Voltar
             </button>
             <div className="text-center flex-1 mx-4">
               <p className="text-sm font-medium text-white truncate">{manga?.title}</p>
-              <p className="text-xs text-white/60">{currentChapter?.title}</p>
+              <p className="text-xs text-white/60 truncate">{currentChapter?.title}</p>
             </div>
             <div className="flex items-center gap-2">
               <button 
@@ -582,7 +582,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
 
       {/* Bottom Bar */}
       <div className={`absolute bottom-0 left-0 right-0 z-20 transition-all duration-300 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'}`}>
-        <div className="bg-gradient-to-t from-black/95 via-black/80 to-transparent px-4 py-3">
+        <div className="bg-gradient-to-t from-black/95 via-black/80 to-transparent px-3 sm:px-4 py-2 sm:py-3 safe-area-bottom">
           {/* Progress bar with slider */}
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-1">
@@ -668,9 +668,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
                 ← Cap. anterior
               </button>
             )}
-            <span className="text-xs text-white/40">
-              {currentChapter?.title}
-            </span>
+            <span className="text-xs text-white/40 truncate max-w-[100px] sm:max-w-xs">{currentChapter?.title}</span>
             {chapterIndex < chapters.length - 1 && (
               <button
                 onClick={() => handleChangeChapter(chapters[chapterIndex + 1].id)}
@@ -685,7 +683,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
 
       {/* Options Menu */}
       {showOptionsMenu && (
-        <div className="absolute top-16 right-4 z-30 glass-card rounded-xl p-2 w-64" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute top-14 sm:top-16 right-2 sm:right-4 z-30 glass-card rounded-xl p-2 w-[calc(100vw-32px)] max-w-xs sm:w-64" onClick={(e) => e.stopPropagation()}>
           <div className="space-y-1">
             <button
               onClick={() => { onBack(); setShowOptionsMenu(false); }}
