@@ -9,9 +9,10 @@
     "dev": "node --watch client.js"
   },
   "dependencies": {
-    "telegram": "^2.22.2",
     "dotenv": "^16.4.5",
+    "input": "^1.0.1",
     "jszip": "^3.10.2",
-    "input": "^1.0.1"
+    "node-telegram-bot-api": "^2.3.0",
+    "telegram": "^2.22.2"
   }
 }

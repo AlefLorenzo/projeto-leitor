@@ -1,5 +1,5 @@
 import { TelegramClient } from 'telegram';
-import { StringSession } from 'telegram/sessions';
+import { StringSession } from 'telegram/sessions/index.js';
 import input from 'input';
 import fs from 'fs/promises';
 import path from 'path';
@@ -272,3 +272,4 @@ function sanitizeFilename(name) {
 
 // Iniciar
 main().catch(console.error);
+

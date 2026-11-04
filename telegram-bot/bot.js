@@ -1,4 +1,6 @@
-import TelegramBot from 'node-telegram-bot-api';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const TelegramBot = require('node-telegram-bot-api');
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -390,3 +392,5 @@ process.on('SIGINT', () => {
   console.log('\n👋 Bot encerrado!');
   process.exit(0);
 });
+
+

@@ -181,10 +181,10 @@ function App() {
           )}
           {view === 'downloads' && <DownloadsPage />}
           {view === 'telegram' && (
-            <TelegramPage onOpenManga={(id) => {
-              // Para obras do Telegram, mostrar mensagem de importação
-              alert(`Para importar "${id}", use o botão de importação na biblioteca.`);
-            }} />
+            <TelegramPage
+              onOpenManga={handleOpenManga}
+              onOpenReader={(mangaId, chapterId) => handleReadChapter(mangaId, chapterId)}
+            />
           )}
           {view === 'statistics' && <StatisticsPage />}
           {view === 'settings' && <SettingsPage />}
@@ -211,3 +211,4 @@ function NavItem({ icon, label, active, onClick }: { icon: string; label: string
 }
 
 export default App;
+
