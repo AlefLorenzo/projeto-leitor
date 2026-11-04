@@ -2,11 +2,33 @@
 <html lang="pt-BR" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Primary Meta Tags -->
     <title>Manga Offline — Leitor de Mangás, Manhwas e Manhuas</title>
+    <meta name="title" content="Manga Offline — Leitor de Mangás, Manhwas e Manhuas" />
+    <meta name="description" content="Aplicativo de leitura offline com biblioteca pessoal. Importe, organize e leia mangás, manhwas e manhuas sem internet." />
+    <meta name="theme-color" content="#8b5cf6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Manga Offline" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Manga Offline" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    
+    <!-- Preconnect for Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <style>
       html, body, #root {
         margin: 0;
@@ -16,16 +38,54 @@
         background-color: #0a0a0f;
         color: #e5e5e5;
         font-family: 'Inter', sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        overscroll-behavior: none;
+        touch-action: manipulation;
       }
       * { box-sizing: border-box; }
       ::-webkit-scrollbar { width: 6px; }
       ::-webkit-scrollbar-track { background: #1a1a2e; }
       ::-webkit-scrollbar-thumb { background: #6c3baa; border-radius: 3px; }
       ::-webkit-scrollbar-thumb:hover { background: #8b5cf6; }
+      
+      /* Prevent pull-to-refresh on mobile */
+      body {
+        position: fixed;
+        overflow: hidden;
+      }
+      
+      #root {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Safe area for notched devices */
+      @supports (padding: max(0px)) {
+        body {
+          padding-left: env(safe-area-inset-left);
+          padding-right: env(safe-area-inset-right);
+          padding-top: env(safe-area-inset-top);
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+      }
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Register Service Worker for offline support -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registered'))
+            .catch(err => console.log('Service Worker registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>
