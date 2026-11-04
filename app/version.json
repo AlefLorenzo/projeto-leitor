@@ -1,6 +1,7 @@
 {
-  "version": "1.1.0",
+  "publishedAt": "2026-11-05T02:51:06Z",
   "bundleUrl": "https://raw.githubusercontent.com/AlefLorenzo/projeto-leitor/main/app/dist.zip",
-  "releaseDate": "2026-11-05",
-  "releaseNotes": "Atualização 1.1.0: Controle persistente de downloads em segundo plano, contabilização real de capítulos lidos/em andamento/concluídos e suporte a Live Update (OTA)."
+  "releaseNotes": "Correcao: downloads de capitulos do catalogo Telegram/GitHub agora funcionam corretamente. Mapeamento automatico de IDs. Fallback pagina por pagina para obras sem CBZ.",
+  "minAppVersion": "1.0.0",
+  "version": "1.2.0"
 }

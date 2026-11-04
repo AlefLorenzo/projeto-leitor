@@ -6,13 +6,18 @@ export interface RemoteCatalogChapter {
   id: string;
   number: number;
   title: string;
-  format?: 'cbz' | 'zip';
+  format?: 'cbz' | 'zip' | 'pages';
   downloadUrl: string;
   sizeBytes: number;
   extractedSizeBytes?: number;
   sha256?: string;
   pageCount: number;
   updatedAt?: string;
+  // Campos extras para download pagina por pagina (catalogo Telegram)
+  folderName?: string;
+  pages?: string[];
+  telegramMsgId?: number;
+  channelId?: string;
 }
 
 export interface RemoteCatalogManga {

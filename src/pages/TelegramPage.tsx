@@ -4,6 +4,7 @@ import {
   loadTelegramCatalog,
   getTelegramCatalogStats,
   importTelegramMangaToLibrary,
+  canonicalSlug,
 } from '../services/telegramCatalog';
 import {
   fetchRemoteCatalog,
@@ -93,7 +94,8 @@ export default function TelegramPage({ onOpenManga, onOpenReader }: TelegramPage
           id: c.id || `${manga.id}-cap-${c.number || i + 1}`,
           number: typeof c.number === 'number' ? c.number : i + 1,
           title: c.title || `Capítulo ${c.number || i + 1}`,
-          downloadUrl: c.downloadUrl || `obras/${manga.id}/capitulos/cap-${String(c.number || i + 1).padStart(3, '0')}.cbz`,
+          // Usa canonicalSlug para resolver o diretório correto em obras/ (ex: pick-me-up-manhwa -> pick-me-up)
+          downloadUrl: c.downloadUrl || `obras/${canonicalSlug(manga.id)}/capitulos/cap-${String(c.number || i + 1).padStart(3, '0')}.cbz`,
           sizeBytes: c.sizeBytes || c.size || 15000000,
           extractedSizeBytes: c.extractedSizeBytes,
           sha256: c.sha256,
