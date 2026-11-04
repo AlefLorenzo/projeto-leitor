@@ -3,9 +3,8 @@
 ## ⚠️ VOCÊ EXPOSS SUAS CREDENCIAIS DO TELEGRAM!
 
 Você compartilhou publicamente:
-- ❌ `api_id`: 36980005
-- ❌ `api_hash`: 7b116b789b449adf59ddcdda453a4b7f
-
+xxxx
+xxxxx
 **ISSO É EXTREMAMENTE PERIGOSO!**
 
 ---
