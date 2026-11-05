@@ -68,28 +68,36 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
 
   // Load chapter data
   useEffect(() => {
+    let isCancelled = false;
     const load = async () => {
       setLoading(true);
       try {
-        const chapterPages = await getPagesByChapter(chapterId);
+        const [chapterPages, dbManga, settings, savedProgress] = await Promise.all([
+          getPagesByChapter(chapterId),
+          getManga(mangaId),
+          getSettings(),
+          getEnhancedProgress(mangaId, chapterId),
+        ]);
+
+        if (isCancelled) return;
+
         setPages(chapterPages);
 
-        // Load settings
-        const settings = await getSettings();
+        // Load settings - prioridade: customSettings da obra > readingDirection da obra > modo global
         setBrightness(settings.brightness);
-        setReadingDirection(manga?.customSettings?.readingDirection || manga?.readingDirection || settings.readerMode);
+        const direction = dbManga?.customSettings?.readingDirection || dbManga?.readingDirection || settings.readerMode || 'rtl';
+        setReadingDirection(direction);
         setImmersiveMode(settings.immersiveMode);
-        setZoom(manga?.customSettings?.zoomLevel || settings.zoomLevel || 1);
+        setZoom(dbManga?.customSettings?.zoomLevel || settings.zoomLevel || 1);
 
         // Load progress
-        const savedProgress = await getEnhancedProgress(mangaId, chapterId);
         if (savedProgress && !savedProgress.completed) {
           setCurrentPage(Math.max(0, savedProgress.pageNumber - 1));
           setProgress(savedProgress);
           setChapterStatus('in_progress');
           
           // Restore scroll position for vertical mode
-          if (savedProgress.scrollPosition && readingDirection === 'vertical') {
+          if (savedProgress.scrollPosition && direction === 'vertical') {
             setTimeout(() => {
               if (scrollContainerRef.current) {
                 scrollContainerRef.current.scrollTop = savedProgress.scrollPosition!;
@@ -106,27 +114,35 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
           isFirstChapter(mangaId, chapterId),
           isLastChapter(mangaId, chapterId),
         ]);
+        if (isCancelled) return;
         setIsFirst(first);
         setIsLast(last);
 
         startTimeRef.current = Date.now();
       } catch (error) {
-        console.error('Error loading chapter:', error);
-        addToast('Erro ao carregar capítulo', 'error');
+        if (!isCancelled) {
+          console.error('Error loading chapter:', error);
+          addToast('Erro ao carregar capítulo', 'error');
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
     load();
-  }, [chapterId, mangaId, manga, readingDirection, addToast]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [chapterId, mangaId, addToast]);
 
   // Save progress periodically
-  const saveCurrentProgress = useCallback(async () => {
+  const saveCurrentProgress = useCallback(async (force = false) => {
     if (pages.length === 0 || loading) return;
 
     const now = Date.now();
-    // Save at most every 5 seconds to avoid excessive writes
-    if (now - lastSaveRef.current < 5000) return;
+    // Save at most every 5 seconds to avoid excessive writes unless forced
+    if (!force && now - lastSaveRef.current < 5000) return;
     lastSaveRef.current = now;
 
     try {
@@ -158,7 +174,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
         addReadingTime(mangaId, chapterId, readingSeconds).catch(console.error);
       }
       // Final progress save
-      saveCurrentProgress();
+      saveCurrentProgress(true);
     };
   }, [mangaId, chapterId, saveCurrentProgress, addReadingTime]);
 
