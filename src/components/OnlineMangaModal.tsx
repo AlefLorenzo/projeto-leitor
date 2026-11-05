@@ -749,13 +749,24 @@ export function OnlineMangaModal({
                         Cancelar
                       </button>
                     ) : (
-                      <button
-                        onClick={() => handleDownloadSingle(ch)}
-                        className="px-3 py-1.5 bg-graphite-800 hover:bg-violet-accent text-graphite-200 hover:text-white rounded-lg text-xs font-semibold border border-graphite-700 transition flex items-center gap-1.5 shadow-sm"
-                      >
-                        <span>⬇️</span>
-                        <span>Baixar</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => onOpenReader(manga.id, ch.id)}
+                          className="px-2.5 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow transition flex items-center gap-1"
+                          title="Ler online sob demanda (Wi-Fi) sem baixar"
+                        >
+                          <span>🌐</span>
+                          <span>Ler Online</span>
+                        </button>
+                        <button
+                          onClick={() => handleDownloadSingle(ch)}
+                          className="px-2.5 sm:px-3 py-1.5 bg-graphite-800 hover:bg-violet-accent text-graphite-200 hover:text-white rounded-lg text-xs font-semibold border border-graphite-700 transition flex items-center gap-1 shadow-sm"
+                          title="Baixar capítulo para leitura offline"
+                        >
+                          <span>⬇️</span>
+                          <span className="hidden sm:inline">Baixar</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
