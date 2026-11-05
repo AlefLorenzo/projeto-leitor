@@ -250,16 +250,12 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
       const mangas: SourceManga[] = (data.data || []).map((item: any) => {
         const attr = item.attributes;
 
-        // Tipo da obra (baseado no idioma original)
-        const origLang = attr.originalLanguage;
-        let type: 'manga' | 'manhwa' | 'manhua' = 'manga';
-        if (origLang === 'ko') type = 'manhwa';
-        else if (origLang === 'zh' || origLang === 'zh-hk') type = 'manhua';
-
         // Título principal com prioridade pt-br → pt → original → en → outros
-        const resolved = resolveMangaTitles(attr.title, attr.altTitles, origLang);
+        const resolved = resolveMangaTitles(attr.title, attr.altTitles, attr.originalLanguage);
         const title = resolved.title;
         const altTitles = resolved.altTitles;
+
+        // Sinopse
         const synopsis =
           attr.description?.['pt-br'] ||
           attr.description?.['pt'] ||
@@ -364,19 +360,15 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
       const item = json.data;
       const attr = item.attributes;
 
-      const title =
-        attr.title?.['pt-br'] ||
-        attr.title?.['pt'] ||
-        attr.title?.en ||
-        attr.title?.['ja-ro'] ||
-        attr.title?.['ko-ro'] ||
-        attr.title?.['zh-ro'] ||
-        Object.values(attr.title || {})[0] ||
-        'Sem título';
+      const origLang = attr.originalLanguage;
+      let type: 'manga' | 'manhwa' | 'manhua' = 'manga';
+      if (origLang === 'ko') type = 'manhwa';
+      else if (origLang === 'zh' || origLang === 'zh-hk') type = 'manhua';
 
-      const altTitles: string[] = (attr.altTitles || [])
-        .map((alt: any) => Object.values(alt)[0] as string)
-        .filter(Boolean);
+      // Título principal com prioridade pt-br → pt → original → en → outros
+      const resolved = resolveMangaTitles(attr.title, attr.altTitles, origLang);
+      const title = resolved.title;
+      const altTitles = resolved.altTitles;
 
       const synopsis =
         attr.description?.['pt-br'] ||
