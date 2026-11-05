@@ -23,6 +23,7 @@ function App() {
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [selectedMangaTitle, setSelectedMangaTitle] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('home');
+  const [previousView, setPreviousView] = useState<View>('home');
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
 
   // Check inicial - entra direto no app
@@ -53,6 +54,7 @@ function App() {
   };
 
   const handleReadChapter = (mangaId: string, chapterId: string) => {
+    setPreviousView(view);
     setSelectedMangaId(mangaId);
     setSelectedChapterId(chapterId);
     setView('reader');
@@ -88,7 +90,7 @@ function App() {
       <ReaderPage
         mangaId={selectedMangaId}
         chapterId={selectedChapterId}
-        onBack={() => setView('details')}
+        onBack={() => setView(previousView || 'library')}
         onChangeChapter={(chapterId) => setSelectedChapterId(chapterId)}
       />
     );
