@@ -1,7 +1,8 @@
 {
-  "version": "1.2.0",
-  "publishedAt": "2026-11-05T02:51:06Z",
   "bundleUrl": "https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main/app/dist.zip",
-  "releaseNotes": "Correcao: downloads de capitulos do catalogo Telegram/GitHub agora funcionam corretamente. Mapeamento automatico de IDs. Fallback pagina por pagina para obras sem CBZ.",
-  "minAppVersion": "1.0.0"
+  "checksum": "e74de8ef7197fde2ef6bca5e6c939dd0a5728f460b929028fc51927fee3e34da",
+  "version": "1.2.0",
+  "publishedAt": "2026-11-05T03:13:41Z",
+  "minAppVersion": "1.0.0",
+  "releaseNotes": "Correcao: downloads de capitulos do catalogo Telegram/GitHub funcionando. Mapeamento automatico de IDs. Fallback pagina por pagina para obras sem CBZ. OTA com suporte a checksum."
 }

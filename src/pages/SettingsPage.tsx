@@ -41,9 +41,9 @@ export default function SettingsPage() {
     setIsApplyingUpdate(true);
     try {
       addToast('Baixando pacote web do GitHub...', 'info');
-      await applyOtaUpdate(updateInfo.bundleUrl, updateInfo.remoteVersion || '1.1.0', (pct) => {
+      await applyOtaUpdate(updateInfo.bundleUrl, updateInfo.remoteVersion || '1.2.0', (pct) => {
         setUpdateProgress(pct);
-      });
+      }, updateInfo.checksum);
       addToast('Atualização aplicada com sucesso! Reiniciando...', 'success');
     } catch (err: any) {
       addToast(err?.message || 'Falha ao aplicar atualização OTA', 'error');
