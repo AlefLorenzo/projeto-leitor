@@ -893,16 +893,17 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="absolute top-16 right-4 z-30 glass-card rounded-xl p-4 w-80 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute top-14 sm:top-16 right-2 sm:right-4 z-30 glass-card rounded-xl p-4 w-[calc(100vw-32px)] max-w-xs sm:w-80 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <h3 className="text-sm font-semibold text-graphite-100 mb-4">Configurações do Leitor</h3>
           
-          {/* Reading Direction */}
+          {/* Tipo de Obra */}
           <div className="mb-4">
-            <label className="text-xs text-graphite-400 mb-2 block">Direção de Leitura</label>
+            <label className="text-xs text-graphite-400 mb-2 block font-medium">Tipo de Obra</label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => handleDirectionChange('rtl')}
                 className={`text-xs p-2 rounded transition-all ${readingDirection === 'rtl' ? 'bg-violet-accent/20 text-violet-light border border-violet-accent/40' : 'bg-graphite-800 text-graphite-400 hover:bg-graphite-700'}`}
+                title="Mangá: Leitura da direita para a esquerda"
               >
                 <div className="text-lg mb-1">🇯🇵</div>
                 <div>Mangá</div>
@@ -911,6 +912,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
               <button
                 onClick={() => handleDirectionChange('vertical')}
                 className={`text-xs p-2 rounded transition-all ${readingDirection === 'vertical' ? 'bg-violet-accent/20 text-violet-light border border-violet-accent/40' : 'bg-graphite-800 text-graphite-400 hover:bg-graphite-700'}`}
+                title="Manhwa: Rolagem vertical contínua"
               >
                 <div className="text-lg mb-1">🇰🇷</div>
                 <div>Manhwa</div>
@@ -919,6 +921,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
               <button
                 onClick={() => handleDirectionChange('ltr')}
                 className={`text-xs p-2 rounded transition-all ${readingDirection === 'ltr' ? 'bg-violet-accent/20 text-violet-light border border-violet-accent/40' : 'bg-graphite-800 text-graphite-400 hover:bg-graphite-700'}`}
+                title="Manhua: Leitura da esquerda para a direita"
               >
                 <div className="text-lg mb-1">🇨🇳</div>
                 <div>Manhua</div>
@@ -988,7 +991,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
 
       {/* Chapter List Panel */}
       {showChapterList && (
-        <div className="absolute top-16 right-4 z-30 glass-card rounded-xl p-4 w-80 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute top-14 sm:top-16 right-2 sm:right-4 z-30 glass-card rounded-xl p-4 w-[calc(100vw-32px)] max-w-xs sm:w-80 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <h3 className="text-sm font-semibold text-graphite-100 mb-3">Índice de Capítulos</h3>
           <div className="space-y-1">
             {chapters.map((ch, idx) => {
