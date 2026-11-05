@@ -248,6 +248,91 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* Leitura Online (Sob Demanda) */}
+      <section className="glass-card rounded-xl p-5 mb-6">
+        <h2 className="text-sm font-semibold text-graphite-100 mb-2 flex items-center gap-2">
+          <span>🌐</span> Leitura Online
+        </h2>
+        <p className="text-xs text-graphite-400 mb-4">
+          Escolha quando o aplicativo poderá carregar capítulos pela internet sem baixá-los previamente.
+        </p>
+        <div className="space-y-2">
+          <label
+            onClick={() => updateSetting('onlineReadingNetwork', 'wifi_only')}
+            className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+              (settings.onlineReadingNetwork || 'wifi_only') === 'wifi_only'
+                ? 'bg-violet-accent/15 border-violet-accent/50 text-white'
+                : 'bg-graphite-800/40 border-graphite-700/40 text-graphite-300 hover:bg-graphite-800/70'
+            }`}
+          >
+            <input
+              type="radio"
+              name="onlineReadingNetwork"
+              checked={(settings.onlineReadingNetwork || 'wifi_only') === 'wifi_only'}
+              onChange={() => {}}
+              className="mt-1 text-violet-accent"
+            />
+            <div className="flex-1 text-xs">
+              <p className="font-semibold text-graphite-100 flex items-center gap-1.5">
+                <span>📶 Somente Wi-Fi</span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-normal">
+                  Padrão recomendado
+                </span>
+              </p>
+              <p className="text-graphite-400 mt-0.5">
+                Permite leitura online somente quando a conexão Wi-Fi for confirmada. Bloqueia dados móveis e conexões desconhecidas para proteger seu plano de dados.
+              </p>
+            </div>
+          </label>
+
+          <label
+            onClick={() => updateSetting('onlineReadingNetwork', 'ask_cellular')}
+            className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+              settings.onlineReadingNetwork === 'ask_cellular'
+                ? 'bg-violet-accent/15 border-violet-accent/50 text-white'
+                : 'bg-graphite-800/40 border-graphite-700/40 text-graphite-300 hover:bg-graphite-800/70'
+            }`}
+          >
+            <input
+              type="radio"
+              name="onlineReadingNetwork"
+              checked={settings.onlineReadingNetwork === 'ask_cellular'}
+              onChange={() => {}}
+              className="mt-1 text-violet-accent"
+            />
+            <div className="flex-1 text-xs">
+              <p className="font-semibold text-graphite-100">📱 Perguntar antes de usar dados móveis</p>
+              <p className="text-graphite-400 mt-0.5">
+                Carrega livremente no Wi-Fi e solicita autorização por capítulo caso esteja em rede móvel ou conexão de tipo desconhecido.
+              </p>
+            </div>
+          </label>
+
+          <label
+            onClick={() => updateSetting('onlineReadingNetwork', 'disabled')}
+            className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+              settings.onlineReadingNetwork === 'disabled'
+                ? 'bg-violet-accent/15 border-violet-accent/50 text-white'
+                : 'bg-graphite-800/40 border-graphite-700/40 text-graphite-300 hover:bg-graphite-800/70'
+            }`}
+          >
+            <input
+              type="radio"
+              name="onlineReadingNetwork"
+              checked={settings.onlineReadingNetwork === 'disabled'}
+              onChange={() => {}}
+              className="mt-1 text-violet-accent"
+            />
+            <div className="flex-1 text-xs">
+              <p className="font-semibold text-graphite-100">🚫 Desativada</p>
+              <p className="text-graphite-400 mt-0.5">
+                Desativa a leitura online. Permite ler somente capítulos que já foram baixados e salvos localmente na biblioteca offline.
+              </p>
+            </div>
+          </label>
+        </div>
+      </section>
+
       {/* Update Settings */}
       <section className="glass-card rounded-xl p-5 mb-6">
         <h2 className="text-sm font-semibold text-graphite-100 mb-4 flex items-center gap-2">
