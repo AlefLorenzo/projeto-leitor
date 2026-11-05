@@ -191,7 +191,25 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
 
       // Configurações do Leitor
       setBrightness(settings.brightness);
-      const direction = dbManga?.customSettings?.readingDirection || dbManga?.readingDirection || settings.readerMode || 'rtl';
+
+      // Prioridade: LocalStorage do mangá > Banco de Dados > Tipo da Obra Online > Preferência Geral
+      let savedDirection: ReadingDirection | undefined;
+      try {
+        const stored = localStorage.getItem(`manga_settings_${mangaId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.readingDirection) savedDirection = parsed.readingDirection;
+        }
+      } catch {}
+
+      const direction: ReadingDirection =
+        savedDirection ||
+        dbManga?.customSettings?.readingDirection ||
+        dbManga?.readingDirection ||
+        (onlineManga?.type === 'manhwa' ? 'vertical' : onlineManga?.type === 'manhua' ? 'ltr' : undefined) ||
+        settings.readerMode ||
+        'rtl';
+
       setReadingDirection(direction);
       setImmersiveMode(settings.immersiveMode);
       setZoom(dbManga?.customSettings?.zoomLevel || settings.zoomLevel || 1);
