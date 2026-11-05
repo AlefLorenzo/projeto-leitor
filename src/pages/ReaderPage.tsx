@@ -253,7 +253,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   }, [readingDirection, currentPage, pages.length, chapterIndex, chapters.length]);
 
   const handleExit = async () => {
-    await saveCurrentProgress();
+    await saveCurrentProgress(true);
     onBack();
   };
 
@@ -402,7 +402,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   };
 
   const handleChangeChapter = async (newChapterId: string) => {
-    await saveCurrentProgress();
+    await saveCurrentProgress(true);
     onChangeChapter(newChapterId);
   };
 
