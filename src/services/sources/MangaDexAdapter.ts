@@ -250,23 +250,16 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
       const mangas: SourceManga[] = (data.data || []).map((item: any) => {
         const attr = item.attributes;
 
-        // Título principal com fallback inteligente para PT-BR, Inglês ou Romanizado
-        const title =
-          attr.title?.['pt-br'] ||
-          attr.title?.['pt'] ||
-          attr.title?.en ||
-          attr.title?.['ja-ro'] ||
-          attr.title?.['ko-ro'] ||
-          attr.title?.['zh-ro'] ||
-          Object.values(attr.title || {})[0] ||
-          'Sem título';
+        // Tipo da obra (baseado no idioma original)
+        const origLang = attr.originalLanguage;
+        let type: 'manga' | 'manhwa' | 'manhua' = 'manga';
+        if (origLang === 'ko') type = 'manhwa';
+        else if (origLang === 'zh' || origLang === 'zh-hk') type = 'manhua';
 
-        // Títulos alternativos
-        const altTitles: string[] = (attr.altTitles || [])
-          .map((alt: any) => Object.values(alt)[0] as string)
-          .filter(Boolean);
-
-        // Sinopse
+        // Título principal com prioridade pt-br → pt → original → en → outros
+        const resolved = resolveMangaTitles(attr.title, attr.altTitles, origLang);
+        const title = resolved.title;
+        const altTitles = resolved.altTitles;
         const synopsis =
           attr.description?.['pt-br'] ||
           attr.description?.['pt'] ||
