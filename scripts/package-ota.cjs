@@ -1,0 +1,54 @@
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const JSZip = require('jszip');
+
+async function packageDist() {
+  const distDir = path.resolve(__dirname, '..', 'dist');
+  const zip = new JSZip();
+
+  function addFolder(dir, currentPath = '') {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      const relPath = currentPath ? currentPath + '/' + file : file;
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        addFolder(fullPath, relPath);
+      } else {
+        zip.file(relPath, fs.readFileSync(fullPath));
+      }
+    }
+  }
+
+  addFolder(distDir);
+  const buffer = await zip.generateAsync({
+    type: 'nodebuffer',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 9 }
+  });
+
+  const zipPath = path.resolve(__dirname, '..', 'app', 'dist.zip');
+  fs.writeFileSync(zipPath, buffer);
+
+  const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+  console.log('SHA-256:', hash);
+  console.log('Tamanho dist.zip:', buffer.length, 'bytes');
+
+  const versionPath = path.resolve(__dirname, '..', 'app', 'version.json');
+  const versionData = {
+    bundleUrl: 'https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main/app/dist.zip',
+    checksum: hash,
+    version: '1.2.1',
+    publishedAt: new Date().toISOString(),
+    minAppVersion: '1.0.0',
+    releaseNotes: 'Restaurada configuração de Tipo de Obra (Mangá, Manhwa, Manhua) durante a leitura com persistência individual por obra.'
+  };
+  fs.writeFileSync(versionPath, JSON.stringify(versionData, null, 2) + '\n');
+  console.log('version.json atualizado:', JSON.stringify(versionData, null, 2));
+}
+
+packageDist().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
