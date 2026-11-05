@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   immersiveMode: false,
   autoSaveProgress: true,
   downloadWifiOnly: true,
+  onlineReadingNetwork: 'wifi_only',
   maxConcurrentDownloads: 2,
   maxStorageMB: 5000,
   updateIntervalHours: 12,

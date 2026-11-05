@@ -206,6 +206,18 @@ export interface DownloadStats {
   totalBytesDownloaded: number;
 }
 
+export type OnlineReadingNetworkPreference = 'wifi_only' | 'ask_cellular' | 'disabled';
+
+export type ConnectionNetworkType = 'wifi' | 'cellular' | 'ethernet' | 'none' | 'unknown';
+
+export interface ConnectionStatus {
+  connected: boolean;
+  connectionType: ConnectionNetworkType;
+  isWifi: boolean;
+  isCellular: boolean;
+  isEthernet: boolean;
+}
+
 // Settings
 export interface AppSettings {
   readerMode: ReadingDirection;
@@ -216,6 +228,7 @@ export interface AppSettings {
   immersiveMode: boolean;
   autoSaveProgress: boolean;
   downloadWifiOnly: boolean;
+  onlineReadingNetwork: OnlineReadingNetworkPreference;
   maxConcurrentDownloads: number;
   maxStorageMB: number;
   updateIntervalHours: number;
