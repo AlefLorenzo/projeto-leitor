@@ -393,11 +393,6 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
         .map((t: any) => t.attributes?.name?.en)
         .filter(Boolean);
 
-      const origLang = attr.originalLanguage;
-      let type: 'manga' | 'manhwa' | 'manhua' = 'manga';
-      if (origLang === 'ko') type = 'manhwa';
-      else if (origLang === 'zh' || origLang === 'zh-hk') type = 'manhua';
-
       let status: 'ongoing' | 'completed' | 'hiatus' | 'cancelled' = 'ongoing';
       if (attr.status === 'completed') status = 'completed';
       else if (attr.status === 'hiatus') status = 'hiatus';
