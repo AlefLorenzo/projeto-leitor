@@ -73,8 +73,8 @@ export async function notifyOtaReady(): Promise<void> {
  */
 export async function checkRemoteUpdate(): Promise<UpdateCheckResult> {
   const urls = [
-    `${JSDELIVR_BASE}/app/version.json?_t=${Date.now()}`,
     `${DEFAULT_GITHUB_CONFIG.rawBaseUrl}/app/version.json?_t=${Date.now()}`,
+    `${JSDELIVR_BASE}/app/version.json?_t=${Date.now()}`,
   ];
 
   let data: RemoteVersionInfo | null = null;
