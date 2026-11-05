@@ -216,6 +216,7 @@ export function OnlineMangaModal({
         storageSize: 0,
         catalogId: manga.id,
         catalogProvider: manga.sourceId,
+        altTitles: manga.altTitles,
       };
     } else {
       local.isFavorite = newFav;

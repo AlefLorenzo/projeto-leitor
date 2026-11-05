@@ -13,6 +13,7 @@ import {
   getStorageStats,
   generateId,
 } from '../services/database';
+import { matchesMangaQuery } from '../services/sources/titleHelper';
 
 export function useMangaStore() {
   const [mangas, setMangas] = useState<Manga[]>([]);
@@ -83,8 +84,7 @@ export function useMangaStore() {
     if (filters.search) {
       const search = filters.search.toLowerCase();
       filtered = filtered.filter(m =>
-        m.title.toLowerCase().includes(search) ||
-        m.author?.toLowerCase().includes(search)
+        matchesMangaQuery(m.title, m.altTitles, m.author, filters.search!)
       );
     }
 
