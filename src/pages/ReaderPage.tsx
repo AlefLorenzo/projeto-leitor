@@ -5,16 +5,17 @@ import {
   saveEnhancedProgress,
   markChapterAsUnread, 
   getEnhancedProgress,
-  getPreviousChapter,
-  getNextChapter,
   isFirstChapter,
   isLastChapter,
-  getChaptersWithStatus,
   addReadingTime,
 } from '../services/readingProgress';
 import { getSettings, saveSettings } from '../services/settings';
-import { Page, Chapter, ReadingProgress, ReadingDirection, MangaType, MangaSettings, Manga } from '../types';
+import { Page, Chapter, ReadingProgress, ReadingDirection, MangaType, MangaSettings, Manga, ConnectionStatus } from '../types';
 import { useToast } from '../components/Toast';
+import { onlineReaderService } from '../services/sources/onlineReaderService';
+import { canProceedWithOnlineReading, subscribeNetworkStatus, getCurrentNetworkStatus } from '../services/networkDetection';
+import { onlineSourceManager } from '../services/sources/OnlineSourceManager';
+import { SourceManga, SourceChapter } from '../services/sources/types';
 
 interface ReaderPageProps {
   mangaId: string;
@@ -25,8 +26,15 @@ interface ReaderPageProps {
 
 export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter }: ReaderPageProps) {
   const { addToast } = useToast();
-  const { manga, chapters, reload: reloadManga } = useMangaDetails(mangaId);
+  const { manga: localManga, chapters: localChapters, reload: reloadManga } = useMangaDetails(mangaId);
   
+  // Dados de fallback para obras online não registradas no IndexedDB
+  const [onlineManga, setOnlineManga] = useState<SourceManga | null>(null);
+  const [onlineChapters, setOnlineChapters] = useState<SourceChapter[]>([]);
+
+  const manga = localManga || onlineManga;
+  const chapters = (localChapters && localChapters.length > 0) ? localChapters : (onlineChapters as any[]);
+
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -36,6 +44,15 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   const [showBoundaryMessage, setShowBoundaryMessage] = useState<string | null>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [showPageSelector, setShowPageSelector] = useState(false);
+
+  // Estados de Leitura Online e Conexão
+  const [isOnlineMode, setIsOnlineMode] = useState(false);
+  const [networkStatus, setNetworkStatus] = useState<ConnectionStatus | null>(null);
+  const [isNetworkInterrupted, setIsNetworkInterrupted] = useState(false);
+  const [showCellularPrompt, setShowCellularPrompt] = useState(false);
+  const [networkBlockReason, setNetworkBlockReason] = useState<string | null>(null);
+  const [pageBlobUrls, setPageBlobUrls] = useState<Map<number, string>>(new Map());
+  const [pageErrors, setPageErrors] = useState<Map<number, string>>(new Map());
   
   // Reader settings
   const [zoom, setZoom] = useState(1);
@@ -66,82 +83,173 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   const currentChapter = chapters.find(c => c.id === chapterId);
   const chapterIndex = chapters.findIndex(c => c.id === chapterId);
 
-  // Load chapter data
+  // Monitoramento contínuo de status de rede
   useEffect(() => {
-    let isCancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [chapterPages, dbManga, settings, savedProgress] = await Promise.all([
-          getPagesByChapter(chapterId),
-          getManga(mangaId),
-          getSettings(),
-          getEnhancedProgress(mangaId, chapterId),
-        ]);
-
-        if (isCancelled) return;
-
-        setPages(chapterPages);
-
-        // Load settings - prioridade: customSettings da obra > readingDirection da obra > modo global
-        setBrightness(settings.brightness);
-        const direction = dbManga?.customSettings?.readingDirection || dbManga?.readingDirection || settings.readerMode || 'rtl';
-        setReadingDirection(direction);
-        setImmersiveMode(settings.immersiveMode);
-        setZoom(dbManga?.customSettings?.zoomLevel || settings.zoomLevel || 1);
-
-        // Load progress
-        if (savedProgress && !savedProgress.completed) {
-          setCurrentPage(Math.max(0, savedProgress.pageNumber - 1));
-          setProgress(savedProgress);
-          setChapterStatus('in_progress');
-          
-          // Restore scroll position for vertical mode
-          if (savedProgress.scrollPosition && direction === 'vertical') {
-            setTimeout(() => {
-              if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTop = savedProgress.scrollPosition!;
-              }
-            }, 100);
-          }
+    getCurrentNetworkStatus().then(setNetworkStatus);
+    const unsubscribe = subscribeNetworkStatus(async (status) => {
+      setNetworkStatus(status);
+      if (isOnlineMode) {
+        const settings = await getSettings();
+        const check = await canProceedWithOnlineReading(settings.onlineReadingNetwork || 'wifi_only', true);
+        if (!check.allowed) {
+          setIsNetworkInterrupted(true);
         } else {
-          setCurrentPage(0);
-          setChapterStatus('not_started');
-        }
-
-        // Check boundaries
-        const [first, last] = await Promise.all([
-          isFirstChapter(mangaId, chapterId),
-          isLastChapter(mangaId, chapterId),
-        ]);
-        if (isCancelled) return;
-        setIsFirst(first);
-        setIsLast(last);
-
-        startTimeRef.current = Date.now();
-      } catch (error) {
-        if (!isCancelled) {
-          console.error('Error loading chapter:', error);
-          addToast('Erro ao carregar capítulo', 'error');
-        }
-      } finally {
-        if (!isCancelled) {
-          setLoading(false);
+          setIsNetworkInterrupted(false);
+          // Retomar carregamento da página atual
+          onlineReaderService.requestPage(currentPage + 1).catch(() => {});
         }
       }
-    };
-    load();
-    return () => {
-      isCancelled = true;
-    };
-  }, [chapterId, mangaId, addToast]);
+    });
+    return unsubscribe;
+  }, [isOnlineMode, currentPage]);
 
-  // Save progress periodically
+  // Ouvinte de status de download das páginas online
+  useEffect(() => {
+    if (!isOnlineMode) return;
+    const unsubscribe = onlineReaderService.onStatusChange((pageNum, status) => {
+      if (status.status === 'loaded' && status.blobUrl) {
+        setPageBlobUrls(prev => {
+          const map = new Map(prev);
+          map.set(pageNum, status.blobUrl!);
+          return map;
+        });
+        setPageErrors(prev => {
+          if (!prev.has(pageNum)) return prev;
+          const map = new Map(prev);
+          map.delete(pageNum);
+          return map;
+        });
+      } else if (status.status === 'error') {
+        setPageErrors(prev => {
+          const map = new Map(prev);
+          map.set(pageNum, status.error || 'Erro ao carregar');
+          return map;
+        });
+      }
+    });
+    return unsubscribe;
+  }, [isOnlineMode]);
+
+  // Carregamento do capítulo (Decisão transparente Online vs Offline)
+  const loadChapter = useCallback(async () => {
+    setLoading(true);
+    setNetworkBlockReason(null);
+    setShowCellularPrompt(false);
+
+    try {
+      const [chapterPages, dbManga, settings, savedProgress] = await Promise.all([
+        getPagesByChapter(chapterId),
+        getManga(mangaId),
+        getSettings(),
+        getEnhancedProgress(mangaId, chapterId),
+      ]);
+
+      // 1. Caso haja páginas salvas localmente -> MODO OFFLINE (Prioridade máxima)
+      if (chapterPages && chapterPages.length > 0) {
+        setIsOnlineMode(false);
+        setPages(chapterPages);
+      } else {
+        // 2. Não há páginas locais -> MODO ONLINE (Sob demanda)
+        setIsOnlineMode(true);
+
+        const networkCheck = await canProceedWithOnlineReading(
+          settings.onlineReadingNetwork || 'wifi_only',
+          false
+        );
+
+        if (networkCheck.needsCellularAuth) {
+          setShowCellularPrompt(true);
+          setLoading(false);
+          return;
+        }
+
+        if (!networkCheck.allowed) {
+          setNetworkBlockReason(networkCheck.reason || 'Conexão Wi-Fi necessária para leitura online.');
+          setLoading(false);
+          return;
+        }
+
+        // Buscar páginas pela fonte online oficial (MangaDex)
+        const sourceId = dbManga?.catalogProvider || 'mangadex';
+        const onlineResult = await onlineReaderService.loadChapterPages(mangaId, chapterId, sourceId);
+        setPages(onlineResult.pages);
+
+        // Se obra ou capítulos não existirem na biblioteca local, busca detalhes online para navegação
+        if (!dbManga) {
+          const adapter = onlineSourceManager.getSource(sourceId) || onlineSourceManager.getActiveSource();
+          adapter.getMangaDetails(mangaId).then(setOnlineManga).catch(() => {});
+          adapter.getChapterList(mangaId).then(setOnlineChapters).catch(() => {});
+        } else if (localChapters.length === 0) {
+          const adapter = onlineSourceManager.getSource(sourceId) || onlineSourceManager.getActiveSource();
+          adapter.getChapterList(mangaId).then(setOnlineChapters).catch(() => {});
+        }
+
+        // Dispara o download da página inicial
+        const initialPage = (savedProgress && !savedProgress.completed) ? Math.max(1, savedProgress.pageNumber) : 1;
+        onlineReaderService.requestPage(initialPage).catch(() => {});
+      }
+
+      // Configurações do Leitor
+      setBrightness(settings.brightness);
+      const direction = dbManga?.customSettings?.readingDirection || dbManga?.readingDirection || settings.readerMode || 'rtl';
+      setReadingDirection(direction);
+      setImmersiveMode(settings.immersiveMode);
+      setZoom(dbManga?.customSettings?.zoomLevel || settings.zoomLevel || 1);
+
+      // Restauração de Progresso
+      if (savedProgress && !savedProgress.completed) {
+        setCurrentPage(Math.max(0, savedProgress.pageNumber - 1));
+        setProgress(savedProgress);
+        setChapterStatus('in_progress');
+        
+        if (savedProgress.scrollPosition && direction === 'vertical') {
+          setTimeout(() => {
+            if (scrollContainerRef.current) {
+              scrollContainerRef.current.scrollTop = savedProgress.scrollPosition!;
+            }
+          }, 100);
+        }
+      } else {
+        setCurrentPage(0);
+        setChapterStatus('not_started');
+      }
+
+      // Limites de capítulos (primeiro e último)
+      const [first, last] = await Promise.all([
+        isFirstChapter(mangaId, chapterId),
+        isLastChapter(mangaId, chapterId),
+      ]);
+      setIsFirst(first);
+      setIsLast(last);
+
+      startTimeRef.current = Date.now();
+    } catch (error: any) {
+      console.error('Error loading chapter:', error);
+      addToast(error?.message || 'Erro ao carregar capítulo', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [chapterId, mangaId, localChapters.length, addToast]);
+
+  useEffect(() => {
+    loadChapter();
+    return () => {
+      onlineReaderService.cleanup();
+    };
+  }, [loadChapter]);
+
+  // Pré-carregamento progressivo de páginas online ao virar de página
+  useEffect(() => {
+    if (isOnlineMode && pages.length > 0) {
+      onlineReaderService.requestPage(currentPage + 1).catch(() => {});
+    }
+  }, [currentPage, isOnlineMode, pages.length]);
+
+  // Salvar progresso de leitura periodicamente
   const saveCurrentProgress = useCallback(async (force = false) => {
     if (pages.length === 0 || loading) return;
 
     const now = Date.now();
-    // Save at most every 5 seconds to avoid excessive writes unless forced
     if (!force && now - lastSaveRef.current < 5000) return;
     lastSaveRef.current = now;
 
@@ -168,15 +276,13 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   // Save on unmount
   useEffect(() => {
     return () => {
-      // Save reading time
       const readingSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
       if (readingSeconds > 0) {
         addReadingTime(mangaId, chapterId, readingSeconds).catch(console.error);
       }
-      // Final progress save
       saveCurrentProgress(true);
     };
-  }, [mangaId, chapterId, saveCurrentProgress, addReadingTime]);
+  }, [mangaId, chapterId, saveCurrentProgress]);
 
   // Controls visibility management
   const showControlsFn = useCallback(() => {
@@ -196,25 +302,21 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     setShowControls(prev => {
       const newState = !prev;
       if (newState && !immersiveMode) {
-        // If showing controls, start auto-hide timer
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
       } else {
-        // If hiding controls, clear timer
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       }
       return newState;
     });
   }, [immersiveMode]);
 
-  // Show controls on page change (but don't force if user explicitly hid them)
   useEffect(() => {
-    // Only auto-show on initial load, not on every page change
     if (pages.length > 0 && !loading) {
       showControlsFn();
     }
     return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
-  }, [pages.length, loading]); // Remove currentPage from dependencies
+  }, [pages.length, loading, showControlsFn]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -261,36 +363,30 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     if (currentPage < pages.length - 1) {
       setCurrentPage(prev => prev + 1);
       showControlsFn();
-    } else if (!isLast) {
-      // Show boundary message and offer next chapter
+    } else if (!isLast && chapterIndex < chapters.length - 1) {
       setShowBoundaryMessage('last_page');
     } else {
       setShowBoundaryMessage('last_chapter');
     }
-  }, [currentPage, pages.length, isLast, showControlsFn]);
+  }, [currentPage, pages.length, isLast, chapterIndex, chapters.length, showControlsFn]);
 
   const goToPrevPage = useCallback(() => {
     if (currentPage > 0) {
       setCurrentPage(prev => prev - 1);
       showControlsFn();
-    } else if (!isFirst) {
+    } else if (!isFirst && chapterIndex > 0) {
       setShowBoundaryMessage('first_page');
     } else {
       setShowBoundaryMessage('first_chapter');
     }
-  }, [currentPage, isFirst, showControlsFn]);
+  }, [currentPage, isFirst, chapterIndex, showControlsFn]);
 
-  // toggleControls já foi definido acima
-
-  // Handle tap/click on page - unified for desktop and mobile
   const handlePageInteraction = (clientX: number, clientY: number, isDoubleClick: boolean) => {
     if (isDoubleClick) {
-      // Double tap - toggle zoom
       setZoom(prev => prev === 1 ? 1.5 : 1);
       return;
     }
 
-    // Single tap - check navigation zones
     const container = document.querySelector('[data-reader-container]');
     if (!container) return;
     
@@ -298,7 +394,6 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     const x = clientX - rect.left;
     const width = rect.width;
 
-    // Navigation zones (30% left, 40% center, 30% right)
     if (x < width * 0.3) {
       if (readingDirection === 'rtl') goToNextPage();
       else goToPrevPage();
@@ -310,65 +405,49 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     }
   };
 
-  // Desktop click handler
   const handlePageClick = (e: React.MouseEvent) => {
     const now = Date.now();
     const timeSinceLastTap = now - lastTapRef.current;
     lastTapRef.current = now;
-
-    // Double tap detection
     const isDoubleClick = timeSinceLastTap < 300 && timeSinceLastTap > 0;
     handlePageInteraction(e.clientX, e.clientY, isDoubleClick);
   };
 
-  // Mobile touch handler - only handle taps, not swipes
   const handleTouchTap = (e: React.TouchEvent) => {
-    // Only handle if it's a simple tap (no swipe)
     if (!dragStart) return;
-    
     const touch = e.changedTouches[0];
     const deltaX = Math.abs(touch.clientX - dragStart.x);
     const deltaY = Math.abs(touch.clientY - dragStart.y);
-    
-    // If moved more than 10px, it's a swipe, not a tap
     if (deltaX > 10 || deltaY > 10) return;
 
     const now = Date.now();
     const timeSinceLastTap = now - lastTapRef.current;
     lastTapRef.current = now;
-
     const isDoubleClick = timeSinceLastTap < 300 && timeSinceLastTap > 0;
     handlePageInteraction(touch.clientX, touch.clientY, isDoubleClick);
   };
 
-  // Touch handlers for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       setDragStart({ x: touch.clientX, y: touch.clientY });
     } else if (e.touches.length === 2) {
-      // Pinch start
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
       const distance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
       );
       setPinchStart(distance);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchStart !== null) {
-      // Pinch zoom
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
+    if (e.touches.length === 2 && pinchStart) {
       const distance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
       );
       const scale = distance / pinchStart;
-      setZoom(prev => Math.max(0.5, Math.min(3, prev * scale)));
+      setZoom(prev => Math.min(Math.max(0.5, prev * scale), 3));
       setPinchStart(distance);
     }
   };
@@ -378,22 +457,16 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
       const touch = e.changedTouches[0];
       const deltaX = touch.clientX - dragStart.x;
       const deltaY = touch.clientY - dragStart.y;
-      const absX = Math.abs(deltaX);
-      const absY = Math.abs(deltaY);
-
-      // Swipe detection (minimum 50px, horizontal dominant)
-      if (absX > 50 && absX > absY * 1.5) {
+      
+      if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 100) {
         if (deltaX > 0) {
-          // Swipe right
           if (readingDirection === 'rtl') goToNextPage();
           else goToPrevPage();
         } else {
-          // Swipe left
           if (readingDirection === 'rtl') goToPrevPage();
           else goToNextPage();
         }
       } else {
-        // It's a tap, not a swipe
         handleTouchTap(e);
       }
     }
@@ -407,18 +480,16 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   };
 
   const handleGoToPreviousChapter = async () => {
-    const prev = await getPreviousChapter(mangaId, chapterId);
-    if (prev) {
+    if (chapterIndex > 0) {
       setShowBoundaryMessage(null);
-      await handleChangeChapter(prev.id);
+      await handleChangeChapter(chapters[chapterIndex - 1].id);
     }
   };
 
   const handleGoToNextChapter = async () => {
-    const next = await getNextChapter(mangaId, chapterId);
-    if (next) {
+    if (chapterIndex >= 0 && chapterIndex < chapters.length - 1) {
       setShowBoundaryMessage(null);
-      await handleChangeChapter(next.id);
+      await handleChangeChapter(chapters[chapterIndex + 1].id);
     }
   };
 
@@ -459,9 +530,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
       const scrollTop = scrollContainerRef.current.scrollTop;
       setScrollPosition(scrollTop);
       
-      // Calculate current page based on scroll position
       const totalHeight = scrollContainerRef.current.scrollHeight;
-      const viewportHeight = scrollContainerRef.current.clientHeight;
       const pageHeight = totalHeight / pages.length;
       const newPage = Math.min(
         pages.length - 1,
@@ -476,9 +545,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   const handleDirectionChange = async (newDirection: ReadingDirection) => {
     if (newDirection === readingDirection) return;
 
-    // Salva o progresso atual antes de trocar de modo
     await saveCurrentProgress(true);
-
     setReadingDirection(newDirection);
 
     const typeMap: Record<ReadingDirection, MangaType> = {
@@ -513,7 +580,6 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
       addToast('Erro ao salvar configuração da obra', 'error');
     }
 
-    // Se mudou para vertical, posicionar na página atual onde o usuário estava lendo
     if (newDirection === 'vertical') {
       setTimeout(() => {
         if (scrollContainerRef.current) {
@@ -525,6 +591,66 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
       }, 50);
     }
   };
+
+  // TELA DE BLOQUEIO DE REDE
+  if (networkBlockReason) {
+    return (
+      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4">
+        <div className="glass-card rounded-2xl p-6 max-w-sm w-full text-center border border-graphite-700">
+          <span className="text-4xl mb-3 block">📶</span>
+          <h3 className="text-base font-bold text-graphite-100 mb-2">Conexão Wi-Fi Necessária</h3>
+          <p className="text-xs text-graphite-400 mb-5 leading-relaxed">{networkBlockReason}</p>
+          <div className="space-y-2">
+            <button
+              onClick={() => { setNetworkBlockReason(null); loadChapter(); }}
+              className="w-full py-2.5 bg-violet-accent hover:bg-violet-dark text-white rounded-xl text-xs font-semibold transition"
+            >
+              🔄 Tentar Novamente
+            </button>
+            <button
+              onClick={onBack}
+              className="w-full py-2 bg-graphite-800 hover:bg-graphite-700 text-graphite-300 rounded-xl text-xs font-medium transition"
+            >
+              ← Voltar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // MODAL DE AUTORIZAÇÃO DE DADOS MÓVEIS (PERGUNTAR ANTES)
+  if (showCellularPrompt) {
+    return (
+      <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+        <div className="glass-card rounded-2xl p-6 max-w-sm w-full text-center border border-amber-600/40">
+          <span className="text-4xl mb-3 block">📱</span>
+          <h3 className="text-base font-bold text-graphite-100 mb-2">Autorizar Dados Móveis?</h3>
+          <p className="text-xs text-graphite-400 mb-5 leading-relaxed">
+            Você não está conectado ao Wi-Fi. Deseja autorizar o uso do seu plano de dados móveis para carregar as imagens deste capítulo online?
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                onlineReaderService.authorizeCellularForSession();
+                setShowCellularPrompt(false);
+                loadChapter();
+              }}
+              className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition shadow"
+            >
+              ⚡ Autorizar para Este Capítulo
+            </button>
+            <button
+              onClick={onBack}
+              className="w-full py-2 bg-graphite-800 hover:bg-graphite-700 text-graphite-300 rounded-xl text-xs font-medium transition"
+            >
+              ← Voltar (Não consumir dados)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -562,7 +688,24 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
             </button>
             <div className="text-center flex-1 mx-4">
               <p className="text-sm font-medium text-white truncate">{manga?.title}</p>
-              <p className="text-xs text-white/60 truncate">{currentChapter?.title}</p>
+              <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                <p className="text-xs text-white/60 truncate max-w-[130px] sm:max-w-xs">{currentChapter?.title}</p>
+                {isOnlineMode ? (
+                  networkStatus?.isCellular ? (
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] border border-amber-500/30 font-semibold flex items-center gap-1">
+                      <span>📱</span> Online (Móvel)
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[10px] border border-emerald-500/30 font-semibold flex items-center gap-1">
+                      <span>📶</span> Online (Wi-Fi)
+                    </span>
+                  )
+                ) : (
+                  <span className="px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 text-[10px] border border-violet-500/30 font-semibold flex items-center gap-1">
+                    <span>💾</span> Offline
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button 
@@ -591,6 +734,19 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
         </div>
       </div>
 
+      {/* BANNER DISCRETO DE RECONEXÃO WI-FI */}
+      {isNetworkInterrupted && (
+        <div className="absolute top-14 left-3 right-3 sm:left-4 sm:right-4 z-30 bg-amber-950/90 border border-amber-600/50 text-amber-200 px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-between text-xs backdrop-blur-sm animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📶</span>
+            <div>
+              <p className="font-semibold">Conexão Wi-Fi interrompida</p>
+              <p className="text-[11px] text-amber-300/80">Sua leitura está preservada na página {currentPage + 1}. Aguardando reconexão...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reader Content */}
       <div 
         data-reader-container
@@ -600,7 +756,6 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
         onTouchMove={handleTouchMove}
         onTouchEnd={(e) => {
           handleTouchEnd(e);
-          // Prevent onClick from firing on mobile after touch
           if ('ontouchstart' in window) {
             e.preventDefault();
           }
@@ -613,33 +768,69 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
             onScroll={handleScroll}
           >
             <div className="max-w-2xl mx-auto">
-              {pages.map((page, index) => (
-                <img 
-                  key={page.id} 
-                  src={page.imageUrl} 
-                  alt={`Página ${index + 1}`} 
-                  className="w-full" 
-                  loading="lazy"
-                  data-page-index={index}
-                />
-              ))}
+              {pages.map((page, index) => {
+                const pageNum = index + 1;
+                const pageError = pageErrors.get(pageNum);
+                const imgSrc = pageBlobUrls.get(pageNum) || page.imageUrl;
+                return (
+                  <div key={page.id} className="w-full relative min-h-[300px] flex items-center justify-center bg-black/40" data-page-index={index}>
+                    {pageError ? (
+                      <div className="text-center p-6 my-6 bg-graphite-900/90 rounded-xl border border-red-500/30 max-w-xs">
+                        <p className="text-xs text-red-300 mb-2">Erro ao carregar página {pageNum}</p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onlineReaderService.retryPage(pageNum);
+                          }}
+                          className="px-3 py-1.5 bg-violet-accent hover:bg-violet-dark text-white rounded-lg text-xs font-semibold shadow"
+                        >
+                          🔄 Recarregar
+                        </button>
+                      </div>
+                    ) : (
+                      <img 
+                        src={imgSrc} 
+                        alt={`Página ${pageNum}`} 
+                        className="w-full" 
+                        loading="lazy"
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (
           <div className="relative w-full h-full flex items-center justify-center">
-            <img
-              src={pages[currentPage]?.imageUrl}
-              alt={`Página ${currentPage + 1}`}
-              className={`transition-transform duration-200 ${
-                fitMode === 'width' ? 'max-w-full' : 
-                fitMode === 'height' ? 'max-h-full' : ''
-              }`}
-              style={{ 
-                transform: `scale(${zoom})`,
-                objectFit: fitMode === 'original' ? 'none' : 'contain'
-              }}
-              draggable={false}
-            />
+            {pageErrors.get(currentPage + 1) ? (
+              <div className="text-center p-6 bg-graphite-900/90 rounded-xl border border-red-500/30 max-w-xs">
+                <span className="text-3xl mb-2 block">⚠️</span>
+                <p className="text-xs text-red-300 mb-3">{pageErrors.get(currentPage + 1)}</p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onlineReaderService.retryPage(currentPage + 1);
+                  }}
+                  className="px-3 py-1.5 bg-violet-accent hover:bg-violet-dark text-white rounded-lg text-xs font-semibold shadow"
+                >
+                  🔄 Recarregar Página
+                </button>
+              </div>
+            ) : (
+              <img
+                src={pageBlobUrls.get(currentPage + 1) || pages[currentPage]?.imageUrl}
+                alt={`Página ${currentPage + 1}`}
+                className={`transition-transform duration-200 ${
+                  fitMode === 'width' ? 'max-w-full' : 
+                  fitMode === 'height' ? 'max-h-full' : ''
+                }`}
+                style={{ 
+                  transform: `scale(${zoom})`,
+                  objectFit: fitMode === 'original' ? 'none' : 'contain'
+                }}
+                draggable={false}
+              />
+            )}
           </div>
         )}
       </div>
@@ -651,38 +842,31 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs text-white/60 font-mono">{currentPage + 1}</span>
-              <div
+              <div 
                 className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden cursor-pointer relative"
                 onClick={(e) => {
                   e.stopPropagation();
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percent = x / rect.width;
-                  const page = Math.floor(percent * pages.length);
-                  handleGoToPage(page);
+                  handleGoToPage(Math.floor(percent * pages.length));
                 }}
               >
-                <div className="progress-bar h-full transition-all" style={{ width: `${progressPercent}%` }}></div>
+                <div 
+                  className="h-full bg-violet-accent transition-all duration-150"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
               <span className="text-xs text-white/60 font-mono">{pages.length}</span>
             </div>
-            <div className="text-center">
-              <span className="text-xs text-white/80">{progressPercent}%</span>
-              {chapterStatus === 'in_progress' && (
-                <span className="text-[10px] text-violet-light ml-2">• Em andamento</span>
-              )}
-              {chapterStatus === 'completed' && (
-                <span className="text-[10px] text-success ml-2">• ✓ Concluído</span>
-              )}
-            </div>
           </div>
 
-          {/* Main controls */}
-          <div className="flex items-center justify-between gap-2">
+          {/* Navigation Controls */}
+          <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
             <button
               onClick={(e) => { e.stopPropagation(); handleGoToPreviousChapter(); }}
               className="text-white/80 hover:text-white text-xs px-2 py-2 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-              disabled={isFirst}
+              disabled={chapterIndex === 0}
               title="Capítulo anterior"
             >
               ⏮
@@ -690,7 +874,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
             <button
               onClick={(e) => { e.stopPropagation(); goToPrevPage(); }}
               className="text-white/80 hover:text-white text-sm px-3 py-2 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-              disabled={currentPage === 0 && isFirst}
+              disabled={currentPage === 0 && chapterIndex === 0}
               title="Página anterior"
             >
               {readingDirection === 'rtl' ? '▶' : '◀'}
@@ -707,7 +891,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
             <button
               onClick={(e) => { e.stopPropagation(); goToNextPage(); }}
               className="text-white/80 hover:text-white text-sm px-3 py-2 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-              disabled={currentPage === pages.length - 1 && isLast}
+              disabled={currentPage === pages.length - 1 && chapterIndex === chapters.length - 1}
               title="Próxima página"
             >
               {readingDirection === 'rtl' ? '◀' : '▶'}
@@ -715,7 +899,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
             <button
               onClick={(e) => { e.stopPropagation(); handleGoToNextChapter(); }}
               className="text-white/80 hover:text-white text-xs px-2 py-2 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-              disabled={isLast}
+              disabled={chapterIndex === chapters.length - 1}
               title="Próximo capítulo"
             >
               ⏭
@@ -842,7 +1026,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
                 <span className="text-4xl mb-3 block">⬅️</span>
                 <h3 className="text-lg font-semibold text-graphite-100 mb-2">Início do Capítulo</h3>
                 <p className="text-sm text-graphite-400 mb-4">Você está na primeira página deste capítulo.</p>
-                {!isFirst && (
+                {chapterIndex > 0 && (
                   <button
                     onClick={handleGoToPreviousChapter}
                     className="w-full py-2 bg-violet-accent hover:bg-violet-dark text-white rounded-lg text-sm font-medium"
@@ -856,7 +1040,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
               <>
                 <span className="text-4xl mb-3 block">📖</span>
                 <h3 className="text-lg font-semibold text-graphite-100 mb-2">Primeiro Capítulo</h3>
-                <p className="text-sm text-graphite-400 mb-4">Este é o primeiro capítulo da obra. Não há capítulo anterior.</p>
+                <p className="text-sm text-graphite-400 mb-4">Este é o primeiro capítulo disponível.</p>
               </>
             )}
             {showBoundaryMessage === 'last_page' && (
@@ -864,7 +1048,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
                 <span className="text-4xl mb-3 block">➡️</span>
                 <h3 className="text-lg font-semibold text-graphite-100 mb-2">Fim do Capítulo</h3>
                 <p className="text-sm text-graphite-400 mb-4">Você concluiu este capítulo!</p>
-                {!isLast && (
+                {chapterIndex < chapters.length - 1 && (
                   <button
                     onClick={handleGoToNextChapter}
                     className="w-full py-2 bg-violet-accent hover:bg-violet-dark text-white rounded-lg text-sm font-medium"
@@ -878,7 +1062,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
               <>
                 <span className="text-4xl mb-3 block">🎉</span>
                 <h3 className="text-lg font-semibold text-graphite-100 mb-2">Último Capítulo</h3>
-                <p className="text-sm text-graphite-400 mb-4">Você chegou ao último capítulo disponível desta obra.</p>
+                <p className="text-sm text-graphite-400 mb-4">Você chegou ao último capítulo desta obra.</p>
               </>
             )}
             <button
@@ -1011,7 +1195,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
                 >
                   <span className={statusColor}>{statusIcon}</span>
                   <span className="font-medium flex-1">{ch.title}</span>
-                  <span className="text-graphite-500 text-[10px]">{ch.pagesCount} págs.</span>
+                  {ch.pagesCount ? <span className="text-graphite-500 text-[10px]">{ch.pagesCount} págs.</span> : null}
                 </button>
               );
             })}
