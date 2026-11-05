@@ -1,7 +1,7 @@
 import { isCapacitorNative } from './platform';
 import { DEFAULT_GITHUB_CONFIG } from './githubCatalog';
 
-export const CURRENT_APP_VERSION = '1.2.1';
+export const CURRENT_APP_VERSION = '1.2.2';
 
 // CDN que serve arquivos do GitHub sem restrições
 const JSDELIVR_BASE = 'https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main';

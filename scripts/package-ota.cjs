@@ -45,10 +45,10 @@ async function packageDist() {
   const versionData = {
     bundleUrl: 'https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main/app/dist.zip',
     checksum: hash,
-    version: '1.2.1',
+    version: '1.2.2',
     publishedAt: new Date().toISOString(),
     minAppVersion: '1.0.0',
-    releaseNotes: 'Restaurada configuração de Tipo de Obra (Mangá, Manhwa, Manhua) durante a leitura com persistência individual por obra.'
+    releaseNotes: 'Correção de títulos PT-BR (MangaDex) + busca multilíngue + função centralizada de seleção de idioma'
   };
   fs.writeFileSync(versionPath, JSON.stringify(versionData, null, 2) + '\n');
   console.log('version.json atualizado:', JSON.stringify(versionData, null, 2));
