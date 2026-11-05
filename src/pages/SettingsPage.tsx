@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AppSettings } from '../types';
+import { AppSettings, OnlineReadingNetworkPreference } from '../types';
 import { getSettings, saveSettings } from '../services/settings';
 import { getStorageStats, getAllMangas, deleteManga } from '../services/database';
 import { formatFileSize } from '../services/import';
