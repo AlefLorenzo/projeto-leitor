@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMangaDetails } from '../hooks/useMangaStore';
-import { getPagesByChapter } from '../services/database';
+import { getPagesByChapter, getManga, saveManga } from '../services/database';
 import { 
   saveEnhancedProgress,
   markChapterAsUnread, 
@@ -13,7 +13,7 @@ import {
   addReadingTime,
 } from '../services/readingProgress';
 import { getSettings, saveSettings } from '../services/settings';
-import { Page, Chapter, ReadingProgress, ReadingDirection, MangaSettings } from '../types';
+import { Page, Chapter, ReadingProgress, ReadingDirection, MangaType, MangaSettings, Manga } from '../types';
 import { useToast } from '../components/Toast';
 
 interface ReaderPageProps {
@@ -25,7 +25,7 @@ interface ReaderPageProps {
 
 export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter }: ReaderPageProps) {
   const { addToast } = useToast();
-  const { manga, chapters } = useMangaDetails(mangaId);
+  const { manga, chapters, reload: reloadManga } = useMangaDetails(mangaId);
   
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
