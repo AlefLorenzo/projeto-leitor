@@ -563,7 +563,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   const handleDirectionChange = async (newDirection: ReadingDirection) => {
     if (newDirection === readingDirection) return;
 
-    await saveCurrentProgress(true);
+    // 1. Aplicação imediata no leitor
     setReadingDirection(newDirection);
 
     const typeMap: Record<ReadingDirection, MangaType> = {
@@ -573,11 +573,31 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
     };
     const newType = typeMap[newDirection];
 
+    // Atualiza onlineManga em memória se estiver no modo online
+    if (onlineManga) {
+      setOnlineManga(prev => prev ? { ...prev, type: newType } : null);
+    }
+
+    // 2. Persistência instantânea no localStorage por mangaId (à prova de falhas)
+    try {
+      localStorage.setItem(`manga_settings_${mangaId}`, JSON.stringify({
+        readingDirection: newDirection,
+        type: newType,
+        updatedAt: Date.now(),
+      }));
+    } catch (storageErr) {
+      console.warn('Aviso ao salvar configuração em localStorage:', storageErr);
+    }
+
+    // 3. Salva progresso atual da leitura com nova direção
+    saveCurrentProgress(true).catch(() => {});
+
+    // 4. Salva no IndexedDB de forma resiliente
     try {
       const dbManga = await getManga(mangaId);
       if (dbManga) {
         const customSettings: MangaSettings = {
-          ...dbManga.customSettings,
+          ...(dbManga.customSettings || {}),
           readingDirection: newDirection,
         };
         const updatedManga: Manga = {
@@ -588,16 +608,43 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
           updatedAt: Date.now(),
         };
         await saveManga(updatedManga);
-        if (reloadManga) {
-          reloadManga();
-        }
+      } else if (onlineManga) {
+        // Obra online sem registro prévio: armazena entrada leve no catálogo local
+        const now = Date.now();
+        const newDbManga: Manga = {
+          id: mangaId,
+          title: onlineManga.title || 'Obra Online',
+          synopsis: onlineManga.synopsis,
+          coverUrl: onlineManga.coverUrl || onlineManga.thumbnailUrl,
+          genres: onlineManga.genres || [],
+          type: newType,
+          readingDirection: newDirection,
+          status: 'reading',
+          source: 'online',
+          createdAt: now,
+          updatedAt: now,
+          isFavorite: false,
+          totalChapters: onlineManga.totalChapters || 1,
+          totalPages: pages.length || 0,
+          storageSize: 0,
+          catalogId: onlineManga.id,
+          catalogProvider: onlineManga.sourceId,
+          altTitles: onlineManga.altTitles,
+          customSettings: {
+            readingDirection: newDirection,
+          },
+        };
+        await saveManga(newDbManga);
       }
-      addToast(`Tipo de obra alterado para ${newType === 'manga' ? 'Mangá' : newType === 'manhwa' ? 'Manhwa' : 'Manhua'}`, 'info');
     } catch (err) {
-      console.error('Erro ao salvar tipo de obra:', err);
-      addToast('Erro ao salvar configuração da obra', 'error');
+      console.warn('Aviso ao sincronizar tipo de obra no IndexedDB (mantido via localStorage):', err);
     }
 
+    // 5. Toast de sucesso amigável
+    const label = newType === 'manga' ? 'Mangá (Direita → Esquerda)' : newType === 'manhwa' ? 'Manhwa (Vertical)' : 'Manhua (Esquerda → Direita)';
+    addToast(`Tipo de obra alterado para ${label}`, 'success');
+
+    // 6. Se alternou para vertical, rola suavemente para a página atual
     if (newDirection === 'vertical') {
       setTimeout(() => {
         if (scrollContainerRef.current) {
@@ -606,7 +653,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
             el.scrollIntoView({ behavior: 'auto', block: 'start' });
           }
         }
-      }, 50);
+      }, 80);
     }
   };
 
