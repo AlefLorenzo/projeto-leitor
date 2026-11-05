@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "auto-sync": "node scripts/auto-sync-git.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
