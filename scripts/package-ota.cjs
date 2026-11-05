@@ -7,9 +7,15 @@ async function packageDist() {
   const distDir = path.resolve(__dirname, '..', 'dist');
   const zip = new JSZip();
 
+  // Excluir pastas pesadas como catalog/obras que não pertencem ao bundle da aplicação web OTA
+  const excludedFolders = new Set(['catalog', 'obras']);
+
   function addFolder(dir, currentPath = '') {
     const files = fs.readdirSync(dir);
     for (const file of files) {
+      if (!currentPath && excludedFolders.has(file)) {
+        continue;
+      }
       const fullPath = path.join(dir, file);
       const relPath = currentPath ? currentPath + '/' + file : file;
       const stat = fs.statSync(fullPath);
@@ -33,7 +39,7 @@ async function packageDist() {
 
   const hash = crypto.createHash('sha256').update(buffer).digest('hex');
   console.log('SHA-256:', hash);
-  console.log('Tamanho dist.zip:', buffer.length, 'bytes');
+  console.log('Tamanho dist.zip:', buffer.length, 'bytes (' + (buffer.length / 1024).toFixed(1) + ' KB)');
 
   const versionPath = path.resolve(__dirname, '..', 'app', 'version.json');
   const versionData = {
