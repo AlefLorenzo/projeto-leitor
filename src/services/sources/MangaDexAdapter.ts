@@ -8,6 +8,7 @@ import {
   SourceFilterOptions,
 } from './types';
 import { isCapacitorNative, isViteDev, universalFetch } from '../platform';
+import { resolveMangaTitles } from './titleHelper';
 
 /**
  * Ordenação natural e inteligente de capítulos
@@ -66,7 +67,8 @@ export class MangaDexAdapter implements OnlineSourceAdapter {
   }
 
   private coverBaseUrl = 'https://uploads.mangadex.org/covers';
-  private cachePrefix = 'manga_offline_md_cache_';
+  // Versão v2: invalida caches antigos que não usavam resolveMangaTitles
+  private cachePrefix = 'manga_offline_md_cache_v2_';
   private lastRequestTime = 0;
   private minRequestInterval = 200; // Máx ~5 requisições por segundo para respeitar o rate-limit do MangaDex
 
