@@ -353,11 +353,16 @@ export async function downloadOnlineChapter(
         catalogId: manga.id,
         catalogProvider: adapter.id,
         externalUrl: adapter.baseUrl,
+        altTitles: manga.altTitles,
       };
       await saveManga(localManga);
     } else {
       localManga.storageSize = (localManga.storageSize || 0) + totalBytes;
       localManga.totalPages = (localManga.totalPages || 0) + tempPages.length;
+      // Atualizar título para pt-br se tiver melhorado
+      if (manga.altTitles && manga.altTitles.length > 0) {
+        localManga.altTitles = manga.altTitles;
+      }
       await saveManga(localManga);
     }
 

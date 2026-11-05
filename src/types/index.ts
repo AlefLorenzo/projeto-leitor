@@ -31,6 +31,8 @@ export interface Manga {
   catalogProvider?: string;
   externalUrl?: string;
   autoDownload?: boolean;
+  /** Títulos alternativos (pt, en, ja-ro, etc.) para busca multilíngue */
+  altTitles?: string[];
   // Per-manga settings
   customSettings?: MangaSettings;
 }
