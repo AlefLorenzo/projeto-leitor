@@ -45,10 +45,10 @@ async function packageDist() {
   const versionData = {
     bundleUrl: 'https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main/app/dist.zip',
     checksum: hash,
-    version: '1.3.0',
+    version: '1.3.1',
     publishedAt: new Date().toISOString(),
     minAppVersion: '1.0.0',
-    releaseNotes: 'Nova funcionalidade: Leitura Online por Wi-Fi sem download prévio sob demanda + controle de dados móveis'
+    releaseNotes: 'Correção: Alternância sem erros entre tipos de obra (Mangá, Manhwa, Manhua) diretamente dentro do leitor com persistência imediata.'
   };
   fs.writeFileSync(versionPath, JSON.stringify(versionData, null, 2) + '\n');
   console.log('version.json atualizado:', JSON.stringify(versionData, null, 2));

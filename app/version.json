@@ -1,8 +1,8 @@
 {
   "bundleUrl": "https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main/app/dist.zip",
-  "checksum": "d8913e5260b10a8b2fc172eeb93845655a7965809c1e915d77da3f9cf35da8da",
-  "version": "1.3.0",
-  "publishedAt": "2026-11-05T11:14:50.001Z",
+  "checksum": "c3e6701a70a3aaf53faf77fad0dd0c2f73ac110f71c8a6860174b8d4e02f2111",
+  "version": "1.3.1",
+  "publishedAt": "2026-11-05T11:32:41.545Z",
   "minAppVersion": "1.0.0",
-  "releaseNotes": "Nova funcionalidade: Leitura Online por Wi-Fi sem download prévio sob demanda + controle de dados móveis"
+  "releaseNotes": "Correção: Alternância sem erros entre tipos de obra (Mangá, Manhwa, Manhua) diretamente dentro do leitor com persistência imediata."
 }
