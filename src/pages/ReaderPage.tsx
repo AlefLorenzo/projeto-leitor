@@ -474,15 +474,55 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
   }, [readingDirection, pages.length, currentPage]);
 
   const handleDirectionChange = async (newDirection: ReadingDirection) => {
+    if (newDirection === readingDirection) return;
+
+    // Salva o progresso atual antes de trocar de modo
+    await saveCurrentProgress(true);
+
     setReadingDirection(newDirection);
-    // Save per-manga setting
-    if (manga) {
-      const customSettings: MangaSettings = {
-        ...manga.customSettings,
-        readingDirection: newDirection,
-      };
-      manga.customSettings = customSettings;
-      // Would save to DB here
+
+    const typeMap: Record<ReadingDirection, MangaType> = {
+      rtl: 'manga',
+      vertical: 'manhwa',
+      ltr: 'manhua',
+    };
+    const newType = typeMap[newDirection];
+
+    try {
+      const dbManga = await getManga(mangaId);
+      if (dbManga) {
+        const customSettings: MangaSettings = {
+          ...dbManga.customSettings,
+          readingDirection: newDirection,
+        };
+        const updatedManga: Manga = {
+          ...dbManga,
+          type: newType,
+          readingDirection: newDirection,
+          customSettings,
+          updatedAt: Date.now(),
+        };
+        await saveManga(updatedManga);
+        if (reloadManga) {
+          reloadManga();
+        }
+      }
+      addToast(`Tipo de obra alterado para ${newType === 'manga' ? 'Mangá' : newType === 'manhwa' ? 'Manhwa' : 'Manhua'}`, 'info');
+    } catch (err) {
+      console.error('Erro ao salvar tipo de obra:', err);
+      addToast('Erro ao salvar configuração da obra', 'error');
+    }
+
+    // Se mudou para vertical, posicionar na página atual onde o usuário estava lendo
+    if (newDirection === 'vertical') {
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          const el = scrollContainerRef.current.querySelector(`[data-page-index="${currentPage}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'auto', block: 'start' });
+          }
+        }
+      }, 50);
     }
   };
 
@@ -710,7 +750,7 @@ export default function ReaderPage({ mangaId, chapterId, onBack, onChangeChapter
         <div className="absolute top-14 sm:top-16 right-2 sm:right-4 z-30 glass-card rounded-xl p-2 w-[calc(100vw-32px)] max-w-xs sm:w-64" onClick={(e) => e.stopPropagation()}>
           <div className="space-y-1">
             <button
-              onClick={() => { onBack(); setShowOptionsMenu(false); }}
+              onClick={() => { handleExit(); setShowOptionsMenu(false); }}
               className="w-full text-left px-3 py-2 text-xs text-graphite-300 hover:bg-graphite-800/50 rounded transition-colors"
             >
               📚 Ir para biblioteca
