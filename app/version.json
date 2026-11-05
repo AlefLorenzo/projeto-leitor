@@ -1,8 +1,8 @@
 {
   "bundleUrl": "https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main/app/dist.zip",
-  "checksum": "4d36e854c3c283ed6eed4b83313b160007fb17b9bda12f00b2531a8b38424868",
+  "checksum": "7c15b8c76f8163f04bd73c32c9c91161383ce57e0e4d32cb16bb2b7091f13430",
   "version": "1.2.1",
-  "publishedAt": "2026-11-05T09:33:07.351Z",
+  "publishedAt": "2026-11-05T10:22:09.976Z",
   "minAppVersion": "1.0.0",
   "releaseNotes": "Restaurada configuração de Tipo de Obra (Mangá, Manhwa, Manhua) durante a leitura com persistência individual por obra."
 }
