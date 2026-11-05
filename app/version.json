@@ -1,8 +1,8 @@
 {
   "bundleUrl": "https://cdn.jsdelivr.net/gh/AlefLorenzo/projeto-leitor@main/app/dist.zip",
-  "checksum": "f3746f128c2b86b7d848aa5e872c08c35160869fab231c0f1f2b755f1df0b598",
-  "version": "1.2.2",
-  "publishedAt": "2026-11-05T10:40:30.780Z",
+  "checksum": "d23f36e2c93288954c3488e4c1d765fa4053d238398d62ae21691c2142299c5b",
+  "version": "1.3.0",
+  "publishedAt": "2026-11-05T11:12:31.542Z",
   "minAppVersion": "1.0.0",
-  "releaseNotes": "Correção de títulos PT-BR (MangaDex) + busca multilíngue + função centralizada de seleção de idioma"
+  "releaseNotes": "Nova funcionalidade: Leitura Online por Wi-Fi sem download prévio sob demanda + controle de dados móveis"
 }
